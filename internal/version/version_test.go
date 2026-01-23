@@ -6,11 +6,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func Test_GetHash(t *testing.T) {
+func TestGetHash(t *testing.T) {
 	RegisterTestingT(t)
 
 	Hash = "abcdef1234567890"
 
 	hash := GetHash()
-	Expect(hash).To(Equal(hash[:8]))
+	Expect(hash).To(Equal(Hash[:8]))
 }

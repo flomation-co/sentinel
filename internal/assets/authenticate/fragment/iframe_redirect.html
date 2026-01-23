@@ -1,0 +1,12 @@
+<div>
+    <div>
+        Please wait to be redirected...
+    </div>
+</div>
+<script>
+    if (parent) {
+        parent.postMessage({
+            state: "login_success"
+        }, "*");
+    }
+</script>

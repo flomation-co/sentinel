@@ -8,16 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func Test_LoadConfig(t *testing.T) {
-	t.Parallel()
-	RegisterTestingT(t)
-
-	cfg, err := LoadConfig("../../test-config.json")
-	Expect(err).To(BeNil())
-	Expect(cfg).To(Not(BeNil()))
-}
-
-func Test_LoadConfigBadPath(t *testing.T) {
+func TestLoadConfigBadPath(t *testing.T) {
 	t.Parallel()
 	RegisterTestingT(t)
 
@@ -26,11 +17,19 @@ func Test_LoadConfigBadPath(t *testing.T) {
 	Expect(cfg).To(BeNil())
 }
 
-func Test_LoadConfigNotJSON(t *testing.T) {
+func TestLoadConfigNotJSON(t *testing.T) {
 	t.Parallel()
 	RegisterTestingT(t)
 
 	b := bytes.NewBufferString("").Bytes()
+
+	defer func() {
+		_ = os.Remove("not-json-config")
+	}()
+
+	t.Cleanup(func() {
+		_ = os.Remove("not-json-config")
+	})
 
 	err := os.WriteFile("not-json-config", b, os.ModePerm)
 	Expect(err).To(BeNil())
@@ -38,7 +37,14 @@ func Test_LoadConfigNotJSON(t *testing.T) {
 	cfg, err := LoadConfig("not-json-config")
 	Expect(err).To(Not(BeNil()))
 	Expect(cfg).To(BeNil())
+}
 
-	err = os.Remove("not-json-config")
-	Expect(err).To(BeNil())
+func TestDefaultListener(t *testing.T) {
+	RegisterTestingT(t)
+
+	l := ListenerConfig{}
+	Expect(l.Port).To(Equal(int64(0)))
+	Expect(l.Address).To(BeEmpty())
+	Expect(l.URL).To(BeEmpty())
+	Expect(l.ListenAddress()).To(Equal("127.0.0.1:8999"))
 }

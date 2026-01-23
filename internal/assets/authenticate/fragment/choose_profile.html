@@ -1,0 +1,10 @@
+<div>
+    <div>
+        Select a profile to continue
+    </div>
+    <input type="hidden" name="form_state" id="form_state" maxlength="255" value="email_address"/>
+    <input type="email" name="email_address" id="email_address" required maxlength="255" placeholder="Email Address" class="input_bg" />
+    <div>
+        <input type="submit" value="Continue" class="button button-continue" onclick="if (form.checkValidity()) {this.form.submit();}"/>
+    </div>
+</div>

@@ -1,0 +1,37 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE configuration (
+   name VARCHAR NOT NULL UNIQUE PRIMARY KEY,
+   setting BYTEA DEFAULT NULL
+);
+
+CREATE TABLE "user" (
+    id UUID PRIMARY KEY UNIQUE DEFAULT uuid_generate_v4(),
+    username BYTEA NOT NULL,
+    username_hash BYTEA UNIQUE,
+    password BYTEA NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    locked BOOLEAN DEFAULT FALSE,
+    failed_attempt INT DEFAULT 0
+);
+
+CREATE TABLE password_reset (
+    user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    token UUID NOT NULL DEFAULT uuid_generate_v4(),
+    expiration TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP + INTERVAL '10 minutes'
+);
+
+CREATE TABLE mfa_device (
+    device_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    secret VARCHAR NOT NULL,
+    enrolled_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE session (
+    id UUID PRIMARY KEY UNIQUE DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    state INT NOT NULL DEFAULT 0,
+    expiration TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP + INTERVAL '1 hour'
+);

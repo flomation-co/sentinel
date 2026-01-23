@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Flomation | Automate your world</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="Flomation Limited" name="author" />
+    <meta name="msapplication-TileColor" content="#5C2482">
+    <meta name="theme-color" content="#ffffff">
+
+    <meta content="Flomation - Automate your world" property="og:title"/>
+    <meta content="" property="og:description"/>
+    <meta name="description" content="">
+
+    <meta name="twitter:title" content="FLomation - Automate your world"/>
+    <meta name="twitter:description" content=""/>
+    <meta name="twitter:image" content="https://haia-icons.s3.eu-west-2.amazonaws.com/thumb.png"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+
+    <meta property="og:title" content="FLomation - Automate your world"/>
+    <meta property="og:description" content=""/>
+    <meta property="og:url" content="{{ .Domain }}"/>
+    <meta property="og:image:secure_url" content="https://haia-icons.s3.eu-west-2.amazonaws.com/thumb.png"/>
+    <meta name="image" property="og:image" content="https://haia-icons.s3.eu-west-2.amazonaws.com/thumb.png"/>
+    <meta property="og:image:width" content="1200"/>
+    <meta property="og:image:height" content="630"/>
+
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon.png">
+    <link rel="mask-icon" href="assets/images/favicon.png" color="#5bbad5">
+
+    <style>
+        :root {
+            --background-colour: #161019;
+            --primary-foreground: #460070;
+            --primary-background: #33263a;
+            --secondary-background: #00aa9c;
+            --primary-font-colour: #fff;
+            --secondary-font-colour: #ae9fb9;
+            --secondary-action-colour: #0a0;
+            --highlight-colour: #48abe0;
+        }
+
+        html {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        body {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            font-family: sans-serif;
+            font-size: 0.95em;
+            color: var(--primary-font-colour);
+            background: radial-gradient(at top left, var(--background-colour), var(--primary-background));
+        }
+
+        .authenticate_container_full {
+            width: 100%;
+            /*height: 100%;*/
+        }
+
+        .authenticate_container_small {
+            width: 500px;
+        }
+
+        .authenticate_container {
+            /*background-color: #fff;*/
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-sizing: border-box;
+            /*border: 2px solid #DADDE0;*/
+            /*border-radius: 20px;*/
+        }
+
+        .identity-container {
+            box-sizing: border-box;
+        }
+
+        .authenticate_header {
+            text-align: center;
+            padding-top: 30px;
+            padding-bottom: 30px;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            /*background-color: #F2F4F7;*/
+        }
+
+        .authenticate_content {
+            padding: 20px;
+            color: var(--primary-font-colour);
+            /*background-color: #fff;*/
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+
+        .button {
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 400;
+            cursor: pointer;
+            border: 0;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            align-items: normal;
+            box-sizing: border-box;
+            display: inline-block;
+            font-family: 'Inter',sans-serif;
+            appearance: none;
+            width: 100%;
+            text-align: center;
+        }
+
+        .button-continue {
+            background-color: var(--primary-foreground);
+            color: rgba(255, 255, 255, 1.0);
+        }
+
+        .button-back {
+            background-color: #EDEDED;
+            color: #3A3A46;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary-background);
+            color: var(--primary-font-colour);
+            outline: none;
+            border: 0;
+            box-sizing: border-box;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        input:focus {
+            box-shadow: 0 0 10px 3px var(--highlight-colour);
+        }
+
+        .input_bg {
+            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP6zwAAAgcBApocMXEAAAAASUVORK5CYII=");
+            cursor: auto;
+        }
+
+        .input_mfa {
+            height: auto;
+            aspect-ratio: 1;
+            border: 2px solid #5c2482;
+            margin: 5px;
+            text-align: center;
+            font-size: 3em;
+            border-radius: 5px;
+        }
+
+        .mfa_container {
+            display: flex;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .center-image {
+            text-align: center;
+        }
+
+        hr {
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+
+        .error {
+            color: #EF1550;
+            font-weight: bold;
+            font-size: 0.7em;
+            margin-bottom: 10px;
+        }
+
+        .password-reset-link {
+            color: #7E7E7E;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .invalid:before {
+            font-family: 'FontAwesome';
+            content: "\f00d";
+            width: 10px;
+            display: inline-block;
+            margin-right: 15px;
+            color: #E84A38;
+        }
+
+        .invalid {
+        }
+
+        .valid:before {
+            font-family: 'FontAwesome';
+            content: "\f00c";
+            width: 10px;
+            display: inline-block;
+            margin-right: 15px;
+            color: #00AB84;
+        }
+
+        .valid {
+        }
+
+        .strong {
+            font-family: "Larsseit-Bold", sans-serif;
+        }
+
+        @media only screen and (max-width: 576px) {
+            .authenticate_container_small {
+                width: 90%;
+            }
+        }
+
+        ul {
+            color: #888;
+            width: 100%;
+            text-align: center;
+            padding: 0;
+        }
+
+        li {
+            display: inline-block;
+            text-decoration: underline;
+            min-width: 30%;
+        }
+
+        li > a {
+            color: #888;
+            display: inline-block;
+            text-decoration: underline;
+            min-width: 30%;
+        }
+
+        .pc50 {
+            width: 49%;
+            display: inline-block;
+            margin: 0;
+        }
+
+        @media only screen and (max-width: 576px) {
+            .pc50 {
+                width: 100%;
+                display: block;
+            }
+        }
+
+        .continue_creating_title {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .continue_creating {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="authenticate_container authenticate_container_small" id="authenticate_container">
+        <div class="authenticate_header">
+            <a href="/authenticate" title="Log In or Sign Up for Flomation" data-lang="sign_up_message"><img width="200" height="auto" src="assets/images/flomation-logo-name-reduced.png" alt="Flomation | Automate your world"></a>
+        </div>
+        <div class="authenticate_content" id="authenticate_content">
+        <form method="post" action="/$$FORM_ACTION$$" name="form" id="form">
+            <input type="hidden" id="iframe" maxlength="255" name="iframe" />
+            <input type="hidden" id="redirect_url" maxlength="255" name="redirect_url" value="$$REDIRECT_URL$$"/>
+            <input type="hidden" id="utm_source" maxlength="255" name="utm_source" value="$$UTM_SOURCE$$"/>
+            <input type="hidden" id="utm_medium" maxlength="255" name="utm_medium" value="$$UTM_MEDIUM$$"/>
+            <input type="hidden" id="utm_campaign" maxlength="255" name="utm_campaign" value="$$UTM_CAMPAIGN$$"/>
+            <input type="hidden" id="utm_term" maxlength="255" name="utm_term" value="$$UTM_TERM$$"/>
+            <input type="hidden" id="utm_content" maxlength="255" name="utm_content" value="$$UTM_CONTENT$$"/>

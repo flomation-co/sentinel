@@ -24,8 +24,3 @@ lint:
 test:
 	go test ./... -coverprofile cover.out
 	go tool cover -func cover.out
-
-publish:
-	aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${REGISTRY}
-	docker push ${REGISTRY}/${NAME}:latest
-	docker push ${REGISTRY}/${NAME}:${GITHASH}

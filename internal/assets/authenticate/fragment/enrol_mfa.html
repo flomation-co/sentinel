@@ -1,0 +1,30 @@
+
+<div class="center-image">
+    <img src="/mfa/qr" alt="Enrol MFA"/>
+</div>
+<p>
+    Open your authenticator app, and scan the QR Code above.
+
+    Enter the MFA code provided and click "Enrol MFA" to complete enrollment
+</p>
+<div class="mfa_container">
+    <input type="text" name="mfa_1" id="mfa_1" required maxlength="1" data-lang="enter_2fa" class="input_bg input_mfa" onkeyup="setFocus('mfa_2')" onfocus="this.value=''" autofocus />
+    <input type="text" name="mfa_2" id="mfa_2" required maxlength="1" data-lang="enter_2fa" class="input_bg input_mfa" onkeyup="setFocus('mfa_3')" onfocus="this.value=''" />
+    <input type="text" name="mfa_3" id="mfa_3" required maxlength="1" data-lang="enter_2fa" class="input_bg input_mfa" onkeyup="setFocus('mfa_4')" onfocus="this.value=''" />
+    <input type="text" name="mfa_4" id="mfa_4" required maxlength="1" data-lang="enter_2fa" class="input_bg input_mfa" onkeyup="setFocus('mfa_5')" onfocus="this.value=''" />
+    <input type="text" name="mfa_5" id="mfa_5" required maxlength="1" data-lang="enter_2fa" class="input_bg input_mfa" onkeyup="setFocus('mfa_6')" onfocus="this.value=''" />
+    <input type="text" name="mfa_6" id="mfa_6" required maxlength="1" data-lang="enter_2fa" class="input_bg input_mfa" onfocus="this.value=''" />
+</div>
+
+<div>
+    <input type="submit" value="Enrol MFA" data-lang="enrol_mfa" class="button button-continue" onclick="if (form.checkValidity()) {this.form.submit();}"/>
+</div>
+
+<script>
+    function setFocus(id) {
+        const el = document.getElementById(id)
+        if (el) {
+            el.focus();
+        }
+    }
+</script>
