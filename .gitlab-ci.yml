@@ -1,0 +1,167 @@
+include:
+  - project: 'flomation/infrastructure/ci-templates'
+    ref: main
+    file: '.gitlab-ci-templates.yml'
+
+stages:
+  - prepare
+  - test
+  - build
+  - rpm-publish
+  - deb-publish
+  - publish
+  - Development
+  - Production
+
+variables:
+  VERSION: 0.0.${CI_PIPELINE_IID}
+  NAME: sentinel
+  AWS_ACCESS_KEY_ID: ${GITLAB_AWS_USER_KEY}
+  AWS_SECRET_ACCESS_KEY: ${GITLAB_AWS_USER_SECRET}
+  AWS_DEFAULT_REGION: eu-west-2
+  DEPLOY_BUCKET: ${AWS_DEPLOYMENT_BUCKET}
+  CI_TEMPLATES_PROJECT: flomation/infrastructure/ci-templates
+
+inject-metadata:
+  stage: prepare
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq bash
+  script:
+    - chmod +x scripts/inject-metadata.sh
+    - bash scripts/inject-metadata.sh
+    - echo "PACKAGE_NAME=$(jq -r '.package.name' project-metadata.json)" >> build.env
+  artifacts:
+    paths:
+      - "*.spec"
+      - "*.service"
+      - "debian/"
+    reports:
+      dotenv: build.env
+    expire_in: 1 hour
+
+lint:
+  stage: prepare
+  script:
+    - make lint
+
+compile:
+  stage: build
+  script:
+    - make build
+  artifacts:
+    paths:
+      - ./build.zip
+      - ./dist/application
+    expire_in: 1 hour
+  cache:
+    policy: push
+    paths:
+      - ./build.zip
+
+build-rpm-8:
+  extends: .build-rpm-template
+  image: rockylinux/rockylinux:8
+  variables:
+    EL_VERSION: "8"
+    CI_TEMPLATES_REF: "main"
+  needs:
+    - inject-metadata
+    - compile
+  artifacts:
+    paths:
+      - ${PACKAGE_NAME}-*el8*.rpm
+    expire_in: 30 days
+
+build-rpm-9:
+  extends: .build-rpm-template
+  image: rockylinux/rockylinux:9
+  variables:
+    EL_VERSION: "9"
+    CI_TEMPLATES_REF: "main"
+  needs:
+    - inject-metadata
+    - compile
+  artifacts:
+    paths:
+      - ${PACKAGE_NAME}-*el9*.rpm
+    expire_in: 30 days
+
+build-deb:
+  extends: .build-deb-template
+  variables:
+    CI_TEMPLATES_REF: "main"
+  needs:
+    - inject-metadata
+    - compile
+  artifacts:
+    paths:
+      - ${PACKAGE_NAME}_*.deb
+    expire_in: 30 days
+
+publish:
+  stage: publish
+  only:
+    - main
+  script:
+    - aws s3 cp build.zip s3://${DEPLOY_BUCKET}/${NAME}/${CI_PIPELINE_IID}.zip
+    - aws s3 cp build.zip s3://${DEPLOY_BUCKET}/${NAME}/latest.zip
+  cache:
+    policy: pull
+    paths:
+      - ./build.zip
+
+publish-rpm-8:
+  extends: .publish-rpm-template
+  variables:
+    RPM_FILE_PATTERN: "${PACKAGE_NAME}-*el8*.rpm"
+    EL_VERSION: "8"
+    CI_TEMPLATES_REF: "main"
+    S3_ACCESS_KEY_PARAM: ${S3_ACCESS_KEY_PARAM_DEV}
+    S3_SECRET_KEY_PARAM: ${S3_SECRET_KEY_PARAM_DEV}
+  needs:
+    - build-rpm-8
+
+publish-rpm-9:
+  extends: .publish-rpm-template
+  variables:
+    RPM_FILE_PATTERN: "${PACKAGE_NAME}-*el9*.rpm"
+    EL_VERSION: "9"
+    CI_TEMPLATES_REF: "main"
+    S3_ACCESS_KEY_PARAM: ${S3_ACCESS_KEY_PARAM_DEV}
+    S3_SECRET_KEY_PARAM: ${S3_SECRET_KEY_PARAM_DEV}
+  needs:
+    - build-rpm-9
+
+publish-deb:
+  extends: .publish-deb-template
+  variables:
+    DEB_FILE_PATTERN: "${PACKAGE_NAME}_*.deb"
+    CI_TEMPLATES_REF: "main"
+    S3_ACCESS_KEY_PARAM: ${S3_ACCESS_KEY_PARAM_DEV}
+    S3_SECRET_KEY_PARAM: ${S3_SECRET_KEY_PARAM_DEV}
+  needs:
+    - build-deb
+
+Deploy to DEV:
+  stage: Development
+  variables:
+    ENVIRONMENT: dev
+  only:
+    - main
+  script:
+    - aws s3 cp s3://${DEPLOY_BUCKET}/deploy-application-aws.sh .
+    - chmod +x deploy-application-aws.sh
+    - ENVIRONMENT=${ENVIRONMENT} APPLICATION=${NAME} ./deploy-application-aws.sh
+
+Deploy to Live:
+  stage: Production
+  when: manual
+  variables:
+    ENVIRONMENT: live
+  only:
+    - main
+  script:
+    - aws s3 cp s3://${DEPLOY_BUCKET}/deploy-application-aws.sh .
+    - chmod +x deploy-application-aws.sh
+    - ENVIRONMENT=${ENVIRONMENT} APPLICATION=${NAME} ./deploy-application-aws.sh
