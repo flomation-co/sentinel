@@ -37,7 +37,6 @@ type SMTPConfig struct {
 	Username string `json:"username" env:"SMTP_USERNAME" arg:"smtp-username"`
 	Password string `json:"password" env:"SMTP_PASSWORD" arg:"smtp-password"`
 	Port     int64  `json:"port" env:"SMTP_PORT" arg:"smtp-port"`
-	Secure   bool   `json:"bool" env:"SMTP_SECURE" arg:"smtp-secure"`
 }
 
 type NotificationConfig struct {
@@ -45,6 +44,10 @@ type NotificationConfig struct {
 	SendFrom            string     `json:"send_from" env:"NOTIFICATIONS_SEND_FROM" arg:"notifications-send-from"`
 	OverrideDestination *string    `json:"override_destination,omitempty"`
 	SMTP                SMTPConfig `json:"smtp"`
+}
+
+type GeoIPConfig struct {
+	APIKey string `json:"api_key" env:"GEOIP_API_KEY" arg:"geoip-api-key"`
 }
 
 type ListenerConfig struct {
@@ -70,6 +73,7 @@ type Config struct {
 	Database     DatabaseConfig     `json:"database"`
 	Security     SecurityConfig     `json:"security"`
 	Notification NotificationConfig `json:"notification"`
+	GeoIPConfig  GeoIPConfig        `json:"geo"`
 }
 
 func LoadConfig(path string) (*Config, error) {

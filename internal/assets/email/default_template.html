@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flomation</title>
+    <style>
+        /* Basic Reset */
+        body { margin: 0; padding: 0; background-color: #f4f4f7; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+        table { border-spacing: 0; }
+        td { padding: 0; }
+        img { border: 0; }
+
+        /* Responsive tweaks */
+        @media screen and (max-width: 600px) {
+            .content { width: 100% !important; border-radius: 0 !important; }
+            .wrapper { padding: 10px !important; }
+        }
+    </style>
+</head>
+<body>
+<table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#f4f4f7" class="wrapper" style="padding: 40px 0;">
+    <tr>
+        <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" class="content" style="background-color: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+
+                <tr>
+                    <td style="padding: 40px 40px 20px 40px; text-align: left;">
+                        <div style="font-size: 24px; font-weight: 800; color: #1a1a1a; letter-spacing: -0.5px;">
+                            <a href="https://www.flomation.app"><img width="300" height="84" src="https://flomation-dev-static.s3.eu-west-2.amazonaws.com/flomation_logo_purple_300px.png" alt="Flomation" title="Flomation"/></a>
+                        </div>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding: 20px 40px 40px 40px;">
+                        <h1 style="font-size: 28px; color: #1a1a1a; margin: 0 0 20px 0; line-height: 1.2;">
+                            {{ .Header }}
+                        </h1>
+                        <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 25px 0;">
+                            Hello there,<br><br>
+                            {{ .Message }}
+                        </p>
+
+                        <table border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td align="center" bgcolor="#460070" style="border-radius: 8px;">
+                                    <a href="{{ .ButtonURL }}" target="_blank" style="font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; padding: 14px 30px; display: inline-block;">
+                                        {{ .ButtonText }}
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding: 0 40px;">
+                        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 0;">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="padding: 30px 40px 40px 40px; background-color: #fafafa;">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td style="font-size: 10px; color: #9ca3af; line-height: 1.5;">
+                                    <strong>Flomation Ltd</strong><br>
+                                    33-34 High Street, Bridgnorth, Shropshire, England, WV16 4DB<br /><br />
+                                    This transactional email has been sent in order to perform required actions surrounding the registration, security or billing of your Flomation account<br/><br/>
+                                    Email ID: {{ .TransactionID }}<br />
+                                    Sent: {{ .TransactionTime }}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+            </table>
+            <p style="font-size: 12px; color: #9ca3af; margin-top: 20px;">
+                © 2026 Flomation Ltd. All rights reserved.
+            </p>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

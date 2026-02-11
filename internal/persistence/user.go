@@ -6,12 +6,13 @@ import (
 )
 
 type User struct {
-	ID             string    `db:"id"`
-	Username       string    `db:"username"`
-	Password       string    `db:"password"`
-	CreatedAt      time.Time `db:"created_at"`
-	Locked         bool      `db:"locked"`
-	FailedAttempts int64     `db:"failed_attempt"`
+	ID                string    `db:"id"`
+	Username          string    `db:"username"`
+	Password          *string   `db:"password"`
+	CreatedAt         time.Time `db:"created_at"`
+	VerificationToken *string   `db:"verification_token"`
+	Locked            bool      `db:"locked"`
+	FailedAttempts    int64     `db:"failed_attempt"`
 }
 
 func (s *Service) UserExists(username string) (bool, error) {
@@ -88,15 +89,32 @@ func (s *Service) GetUserByID(userID string) (*User, error) {
 	return &u, nil
 }
 
-func (s *Service) RegisterUser(username string, password string) (*User, error) {
+func (s *Service) GetUserByVerificationToken(token string) (*User, error) {
+	var u User
+
+	if err := s.stmtGetUserByVerificationToken.Get(&u, struct {
+		Token string `db:"token"`
+		Key   string `db:"key"`
+	}{
+		Token: token,
+		Key:   s.config.Database.EncryptionKey,
+	}); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &u, nil
+}
+
+func (s *Service) RegisterUser(username string) (*User, error) {
 	var id string
 	if err := s.stmtInsertUser.Get(&id, struct {
 		Username string `db:"username"`
-		Password string `db:"password"`
 		Key      string `db:"key"`
 	}{
 		Username: username,
-		Password: password,
 		Key:      s.config.Database.EncryptionKey,
 	}); err != nil {
 		return nil, err
@@ -150,6 +168,16 @@ func (s *Service) UpdateFailedAttempts(userID string) error {
 	}{
 		UserID: userID,
 		Key:    s.config.Database.EncryptionKey,
+	})
+
+	return err
+}
+
+func (s *Service) Verify(userID string) error {
+	_, err := s.stmtVerifyUser.Exec(struct {
+		UserID string `db:"id"`
+	}{
+		UserID: userID,
 	})
 
 	return err

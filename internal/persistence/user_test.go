@@ -22,9 +22,8 @@ func TestUserExists(t *testing.T) {
 	Expect(db).To(Not(BeNil()))
 
 	username := uuid.NewString()
-	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 
@@ -55,9 +54,8 @@ func TestRegisterExistingUser(t *testing.T) {
 	Expect(db).To(Not(BeNil()))
 
 	username := uuid.NewString()
-	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 
@@ -69,7 +67,7 @@ func TestRegisterExistingUser(t *testing.T) {
 	Expect(err).To(BeNil())
 	Expect(exists).To(BeTrue())
 
-	u, err = db.RegisterUser(username, password)
+	u, err = db.RegisterUser(username)
 	Expect(err).To(Not(BeNil()))
 	Expect(u).To(BeNil())
 }
@@ -88,9 +86,8 @@ func TestGetByUsername(t *testing.T) {
 	Expect(db).To(Not(BeNil()))
 
 	username := uuid.NewString()
-	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 
@@ -123,9 +120,8 @@ func TestGetByUserID(t *testing.T) {
 	Expect(db).To(Not(BeNil()))
 
 	username := uuid.NewString()
-	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 
@@ -160,9 +156,12 @@ func TestGetByUserAndPassword(t *testing.T) {
 	username := uuid.NewString()
 	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
+
+	err = db.UpdatePassword(u.ID, password)
+	Expect(err).To(BeNil())
 
 	Expect(u.Username).To(Equal(username))
 	Expect(u.Locked).To(BeFalse())
@@ -195,7 +194,7 @@ func TestPasswordReset(t *testing.T) {
 	username := uuid.NewString()
 	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 
@@ -232,9 +231,8 @@ func TestLockUser(t *testing.T) {
 	Expect(db).To(Not(BeNil()))
 
 	username := uuid.NewString()
-	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 
@@ -271,9 +269,8 @@ func TestUserFailedAttempts(t *testing.T) {
 	Expect(db).To(Not(BeNil()))
 
 	username := uuid.NewString()
-	password := uuid.NewString()
 
-	u, err := db.RegisterUser(username, password)
+	u, err := db.RegisterUser(username)
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 

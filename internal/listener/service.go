@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"flomation.app/sentinel/internal/session"
+	"flomation.app/sentinel/internal/user"
 
 	"flomation.app/sentinel/internal/persistence"
 	"flomation.app/sentinel/internal/security"
@@ -16,22 +17,22 @@ import (
 )
 
 type Service struct {
-	config   *config.Config
-	engine   *gin.Engine
-	security *security.Service
-	database *persistence.Service
-	session  *session.Service
+	config  *config.Config
+	engine  *gin.Engine
+	token   *security.Service
+	user    *user.Service
+	session *session.Service
 }
 
 func NewListener(config *config.Config, sec *security.Service, db *persistence.Service) (*Service, error) {
 	gin.SetMode(gin.ReleaseMode)
 
 	s := Service{
-		config:   config,
-		engine:   gin.New(),
-		security: sec,
-		database: db,
-		session:  session.NewService(config, db),
+		config:  config,
+		engine:  gin.New(),
+		token:   sec,
+		user:    user.New(config, db),
+		session: session.New(config, db),
 	}
 
 	m := owasp.
@@ -47,6 +48,11 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 
 	s.engine.GET("/authenticate", s.authenticate)
 	s.engine.POST("/authenticate", s.authenticate)
+	s.engine.GET("/verify", s.verifyUser)
+	//s.engine.GET("/password", s.passwordForm)
+	//s.engine.POST("/password", s.resetPassword)
+
+	s.engine.NoRoute(s.staticAssets)
 
 	s.engine.GET("/version", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -74,7 +80,9 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 		c.Redirect(http.StatusTemporaryRedirect, logoutUrl)
 	})
 
-	s.engine.POST("/token", s.issueToken)
+	s.engine.POST("/api/token", s.issueToken)
+	s.engine.POST("/api/user", s.registerUser)
+	s.engine.GET("/api/user", Sentinel(s.config), s.getUser)
 
 	return &s, nil
 }

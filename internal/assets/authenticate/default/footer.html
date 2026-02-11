@@ -1,9 +1,6 @@
             </form>
         </div>
         <div class="pc50">
-<!--            <select id="language-choice"></select>-->
-        </div>
-        <div class="pc50">
             <ul>
                 <li><a href="https://www.flomation.co/support/" target="_blank" title="Help &amp; Support" data-lang="help">Help</a></li>
                 <li><a href="https://www.flomation.co/terms/" target="_blank" title="Terms &amp; Conditions" data-lang="terms">Terms</a></li>
@@ -25,25 +22,6 @@
             container.classList.add("authenticate_container_full");
         }
 
-        const urlParams = new URLSearchParams(window.location.search)
-
-        const tags = [
-            "utm_source",
-            "utm_medium",
-            "utm_campaign",
-            "utm_term",
-            "utm_content",
-            "redirect_url"
-        ]
-
-        tags.forEach((name) => {
-            const tag = urlParams.get(name);
-            const input = document.getElementById(name);
-            if (input.value === "" && tag !== "") {
-                input.value = tag;
-            }
-        });
-
         function updateParentSize() {
             if (parent) {
                 parent.postMessage({
@@ -58,41 +36,6 @@
             updateParentSize();
 
             new ResizeObserver(updateParentSize).observe(container);
-        }
-    </script>
-
-    <script>
-        const languages = {
-            en: {
-                password_reset: "",
-                password_reset_complete: "",
-                enter_password: "",
-                enter_email_address: "",
-                continue_creating: "",
-                help: "",
-                terms: "",
-                privacy: "",
-                valid_length: "",
-                valid_upper: "",
-                valid_lower: "",
-                valid_number: "",
-                valid_special: "",
-            },
-            cy: {
-
-            },
-            fr: {
-
-            },
-            it: {
-
-            },
-            de: {
-
-            },
-            es: {
-
-            }
         }
     </script>
 </body>

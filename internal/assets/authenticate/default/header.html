@@ -15,14 +15,14 @@
 
     <meta name="twitter:title" content="FLomation - Automate your world"/>
     <meta name="twitter:description" content=""/>
-    <meta name="twitter:image" content="https://haia-icons.s3.eu-west-2.amazonaws.com/thumb.png"/>
+    <meta name="twitter:image" content=""/>
     <meta name="twitter:card" content="summary_large_image"/>
 
     <meta property="og:title" content="FLomation - Automate your world"/>
     <meta property="og:description" content=""/>
     <meta property="og:url" content="{{ .Domain }}"/>
-    <meta property="og:image:secure_url" content="https://haia-icons.s3.eu-west-2.amazonaws.com/thumb.png"/>
-    <meta name="image" property="og:image" content="https://haia-icons.s3.eu-west-2.amazonaws.com/thumb.png"/>
+    <meta property="og:image:secure_url" content=""/>
+    <meta name="image" property="og:image" content=""/>
     <meta property="og:image:width" content="1200"/>
     <meta property="og:image:height" content="630"/>
 
@@ -215,6 +215,7 @@
 
         .strong {
             font-family: "Larsseit-Bold", sans-serif;
+            font-weight: bold;
         }
 
         @media only screen and (max-width: 576px) {
@@ -270,14 +271,11 @@
 <body>
     <div class="authenticate_container authenticate_container_small" id="authenticate_container">
         <div class="authenticate_header">
-            <a href="/authenticate" title="Log In or Sign Up for Flomation" data-lang="sign_up_message"><img width="200" height="auto" src="assets/images/flomation-logo-name-reduced.png" alt="Flomation | Automate your world"></a>
+            <a href="/authenticate" title="Log In or Sign Up for Flomation" data-lang="sign_up_message">
+                <img width="200" height="auto" src="assets/images/flomation-logo.png" alt="Flomation | Automate your world">
+            </a>
         </div>
         <div class="authenticate_content" id="authenticate_content">
-        <form method="post" action="/$$FORM_ACTION$$" name="form" id="form">
+        <form method="post" action="" name="form" id="form">
             <input type="hidden" id="iframe" maxlength="255" name="iframe" />
-            <input type="hidden" id="redirect_url" maxlength="255" name="redirect_url" value="$$REDIRECT_URL$$"/>
-            <input type="hidden" id="utm_source" maxlength="255" name="utm_source" value="$$UTM_SOURCE$$"/>
-            <input type="hidden" id="utm_medium" maxlength="255" name="utm_medium" value="$$UTM_MEDIUM$$"/>
-            <input type="hidden" id="utm_campaign" maxlength="255" name="utm_campaign" value="$$UTM_CAMPAIGN$$"/>
-            <input type="hidden" id="utm_term" maxlength="255" name="utm_term" value="$$UTM_TERM$$"/>
-            <input type="hidden" id="utm_content" maxlength="255" name="utm_content" value="$$UTM_CONTENT$$"/>
+            <input type="hidden" id="session" maxlength="255" name="session" value="$$SESSION_ID$$" />

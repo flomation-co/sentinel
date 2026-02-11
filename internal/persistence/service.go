@@ -23,12 +23,25 @@ type Service struct {
 	stmtGetUserByUsername            *sqlx.NamedStmt
 	stmtGetUserByID                  *sqlx.NamedStmt
 	stmtGetUserByUsernameAndPassword *sqlx.NamedStmt
+	stmtGetUserByVerificationToken   *sqlx.NamedStmt
 	stmtInsertUser                   *sqlx.NamedStmt
 	stmtUpdateUserPassword           *sqlx.NamedStmt
 	stmtLockUser                     *sqlx.NamedStmt
 	stmtUnlockUser                   *sqlx.NamedStmt
 	stmtUpdateFailedAttempts         *sqlx.NamedStmt
 	stmtResetFailedAttempts          *sqlx.NamedStmt
+	stmtVerifyUser                   *sqlx.NamedStmt
+
+	stmtInsertSession           *sqlx.NamedStmt
+	stmtClearSession            *sqlx.NamedStmt
+	stmtClearUserSessions       *sqlx.NamedStmt
+	stmtUpdateSessionState      *sqlx.NamedStmt
+	stmtUpdateSessionExpiration *sqlx.NamedStmt
+	stmtUpdateSessionUserID     *sqlx.NamedStmt
+	stmtGetSessionState         *sqlx.NamedStmt
+	stmtGetSessionUserID        *sqlx.NamedStmt
+	stmtGetSessionUsername      *sqlx.NamedStmt
+	stmtGetSessionRedirectURL   *sqlx.NamedStmt
 }
 
 type baseConfiguration struct {
@@ -154,6 +167,7 @@ func (s *Service) configure() error {
 		    id,
 		    PGP_SYM_DECRYPT(username, :key) AS username,
 		    created_at,
+			verification_token,
 		    locked,
 		    failed_attempt
 		FROM
@@ -178,6 +192,24 @@ func (s *Service) configure() error {
 		    username_hash = DIGEST(LOWER(:username), 'sha256')
 		AND
 		    PGP_SYM_DECRYPT(password, :key) = :password
+		AND
+		    locked = false
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetUserByVerificationToken, err = s.db.PrepareNamed(`
+		SELECT
+		    id,
+		    PGP_SYM_DECRYPT(username, :key) AS username,
+		    created_at,
+		    locked,
+		    failed_attempt
+		FROM
+		    "user"
+		WHERE
+		    verification_token = :token
 	`)
 	if err != nil {
 		return err
@@ -186,12 +218,10 @@ func (s *Service) configure() error {
 	s.stmtInsertUser, err = s.db.PrepareNamed(`
 		INSERT INTO "user" (
 		    username,
-		    username_hash,
-		    password
+		    username_hash
 		) VALUES (
 		    PGP_SYM_ENCRYPT(LOWER(:username), :key),
-		  	DIGEST(LOWER(:username), 'sha256'),
-			PGP_SYM_ENCRYPT(:password, :key)
+		  	DIGEST(LOWER(:username), 'sha256')
 		) RETURNING id;
 	`)
 	if err != nil {
@@ -253,6 +283,149 @@ func (s *Service) configure() error {
 			failed_attempt = 0
 		WHERE
 		    id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtVerifyUser, err = s.db.PrepareNamed(`
+		UPDATE
+		    "user"
+		SET
+			verification_token = NULL
+		WHERE
+		    id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtInsertSession, err = s.db.PrepareNamed(`
+		INSERT INTO session (
+		    user_id,
+			ip_address,
+		    location,
+		    device,
+		    metadata
+		) VALUES (
+		    :user_id,
+			PGP_SYM_ENCRYPT(:ip_address, :key),
+		    PGP_SYM_ENCRYPT(:location, :key),
+		    PGP_SYM_ENCRYPT(:device, :key),
+		    :metadata
+		) RETURNING id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtClearSession, err = s.db.PrepareNamed(`
+		UPDATE 
+		    session
+		SET
+		    state = 999
+		WHERE
+		    id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtClearUserSessions, err = s.db.PrepareNamed(`
+		UPDATE 
+		    session
+		SET
+		    state = 999
+		WHERE
+		    user_id = :user_id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtUpdateSessionState, err = s.db.PrepareNamed(`
+		UPDATE 
+		    session
+		SET
+		    state = :state
+		WHERE
+		    id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtUpdateSessionExpiration, err = s.db.PrepareNamed(`
+		UPDATE 
+		    session
+		SET
+		    expiration = :expiration
+		WHERE
+		    id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtUpdateSessionUserID, err = s.db.PrepareNamed(`
+		UPDATE 
+		    session
+		SET
+		    user_id = :user_id
+		WHERE
+		    id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetSessionState, err = s.db.PrepareNamed(`
+		SELECT	
+		    state
+		FROM
+		    session
+		WHERE
+		    id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetSessionUserID, err = s.db.PrepareNamed(`
+		SELECT	
+		    user_id
+		FROM
+		    session
+		WHERE
+		    id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetSessionUsername, err = s.db.PrepareNamed(`
+		SELECT	
+		    PGP_SYM_DECRYPT(u.username, :key) AS username
+		FROM
+		    session s
+		INNER JOIN
+		    "user" u
+		ON
+			s.user_id = u.id
+		WHERE
+		    s.id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetSessionRedirectURL, err = s.db.PrepareNamed(`
+		SELECT	
+		    metadata->>'redirect_url'
+		FROM
+		    session s
+		WHERE
+		    s.id = :id;
 	`)
 	if err != nil {
 		return err

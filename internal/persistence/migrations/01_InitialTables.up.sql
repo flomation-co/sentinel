@@ -10,8 +10,9 @@ CREATE TABLE "user" (
     id UUID PRIMARY KEY UNIQUE DEFAULT uuid_generate_v4(),
     username BYTEA NOT NULL,
     username_hash BYTEA UNIQUE,
-    password BYTEA NOT NULL,
+    password BYTEA,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    verification_token UUID DEFAULT uuid_generate_v4(),
     locked BOOLEAN DEFAULT FALSE,
     failed_attempt INT DEFAULT 0
 );
@@ -25,7 +26,7 @@ CREATE TABLE password_reset (
 CREATE TABLE mfa_device (
     device_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
     user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
-    secret VARCHAR NOT NULL,
+    secret BYTEA NOT NULL,
     enrolled_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -33,5 +34,9 @@ CREATE TABLE session (
     id UUID PRIMARY KEY UNIQUE DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
     state INT NOT NULL DEFAULT 0,
-    expiration TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP + INTERVAL '1 hour'
+    expiration TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP + INTERVAL '1 hour',
+    ip_address BYTEA DEFAULT NULL,
+    location BYTEA DEFAULT NULL,
+    device BYTEA DEFAULT NULL,
+    metadata JSONB DEFAULT '{}'
 );
