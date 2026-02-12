@@ -11,10 +11,6 @@ import (
 	"flomation.app/sentinel/internal/config"
 )
 
-const (
-	ip2LocURL = "https://api.ip2loc.com/"
-)
-
 var (
 	ErrInvalidResponse = errors.New("invalid http response")
 )
@@ -84,7 +80,7 @@ func GetGeoDataFromIP(config config.Config, address string) (*Data, error) {
 		ip = ips[0].String()
 	}
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s/%s", ip2LocURL, config.GeoIPConfig.APIKey, ip), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://api.ip2loc.com//%s/%s", config.GeoIPConfig.APIKey, ip), nil)
 	if err != nil {
 		return &data, err
 	}
