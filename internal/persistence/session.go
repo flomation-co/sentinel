@@ -70,7 +70,7 @@ func (s *Service) UpdateSessionState(ID string, state int) error {
 func (s *Service) UpdateSessionExpiration(ID string, expiration time.Time) error {
 	_, err := s.stmtUpdateSessionExpiration.Exec(struct {
 		SessionID  string    `db:"id"`
-		Expiration time.Time `db:"state"`
+		Expiration time.Time `db:"expiration"`
 	}{
 		SessionID:  ID,
 		Expiration: expiration,

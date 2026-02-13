@@ -16,6 +16,8 @@ const (
 	fragmentEnterEmailAddress = "email_address"
 	fragmentRegister          = "register"
 	fragmentPassword          = "password"
+	fragmentPasswordError     = "password_error"
+	fragmentSubmitPassword    = "submit_password"
 	fragmentSetPassword       = "set_new_password"
 )
 
@@ -38,6 +40,52 @@ func (s *Service) staticAssets(c *gin.Context) {
 	}
 
 	c.Data(http.StatusOK, http.DetectContentType(b), b)
+}
+
+func (s *Service) setPassword(c *gin.Context) {
+	sessionID := c.DefaultPostForm("session", "")
+	password := c.DefaultPostForm("new-password", "")
+
+	state, err := s.session.GetSessionState(sessionID)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to get session state")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if state != session.StateSetPassword {
+		log.WithFields(log.Fields{
+			"state": state,
+		}).Error("session incorrect state for password reset")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	userID, err := s.session.GetSessionUserID(sessionID)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to get session username")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.user.UpdatePassword(*userID, password); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to update password")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	url := "https://www.google.com"
+	if s.config.Security.LoginRedirect != nil {
+		url = *s.config.Security.LoginRedirect
+	}
+
+	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
 func (s *Service) verifyUser(c *gin.Context) {
@@ -88,6 +136,14 @@ func (s *Service) verifyUser(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to update session")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.session.SetSessionUserID(sess.ID, u.ID); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to set session user id")
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -237,20 +293,27 @@ func (s *Service) authenticate(c *gin.Context) {
 
 		c.Redirect(http.StatusTemporaryRedirect, url)
 		return
-	case fragmentPassword:
+
+	case fragmentSubmitPassword:
 		password := c.DefaultPostForm("current-password", "")
 		username, err := s.session.GetSessionUsername(sessionID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to get session username")
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
+			fragment = fragmentPasswordError
+			break
 		}
 
 		if username == nil {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
+			fragment = fragmentPasswordError
+			break
+		}
+
+		userID, err := s.session.GetSessionUserID(sessionID)
+		if err != nil {
+			fragment = fragmentPasswordError
+			break
 		}
 
 		u, err := s.user.GetUserByUsernameAndPassword(*username, password)
@@ -258,21 +321,29 @@ func (s *Service) authenticate(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to get session username")
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
+			fragment = fragmentPasswordError
+			break
 		}
 
 		if u == nil {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
+			log.WithFields(log.Fields{
+				"username": *username,
+			}).Error("invalid password")
+			if err := s.user.UpdateFailedAttempts(*userID); err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Error("unable to update failed attempts")
+			}
+			fragment = fragmentPasswordError
+			break
 		}
 
-		if err := s.session.UpdateState(sessionID, session.StateDonePassword); err != nil {
+		if err := s.session.UpdateState(sessionID, session.StateComplete); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to set session state")
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
+			fragment = fragmentPasswordError
+			break
 		}
 
 		token, err := s.token.Create(u.ID, -1)
@@ -280,8 +351,8 @@ func (s *Service) authenticate(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to create token")
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
+			fragment = fragmentPasswordError
+			break
 		}
 
 		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", c.Request.URL.Host, true, true)
@@ -289,8 +360,8 @@ func (s *Service) authenticate(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to update state expiration")
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
+			fragment = fragmentPasswordError
+			break
 		}
 
 		url := "https://www.google.com"
@@ -298,6 +369,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			url = *s.config.Security.LoginRedirect
 		}
 		c.Redirect(http.StatusTemporaryRedirect, url)
+		return
 
 	case fragmentSetPassword:
 		password := c.DefaultPostForm("new-password", "")
@@ -328,7 +400,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		if err := s.session.UpdateState(sessionID, session.StateDonePassword); err != nil {
+		if err := s.session.UpdateState(sessionID, session.StateComplete); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to set session state")
@@ -359,6 +431,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			url = *s.config.Security.LoginRedirect
 		}
 		c.Redirect(http.StatusTemporaryRedirect, url)
+		return
+
+	default:
+
 	}
 
 	content, err := s.loadHTMLFragment(fragment)

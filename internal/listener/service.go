@@ -49,8 +49,7 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/authenticate", s.authenticate)
 	s.engine.POST("/authenticate", s.authenticate)
 	s.engine.GET("/verify", s.verifyUser)
-	//s.engine.GET("/password", s.passwordForm)
-	//s.engine.POST("/password", s.resetPassword)
+	s.engine.POST("/verify", s.setPassword)
 
 	s.engine.NoRoute(s.staticAssets)
 

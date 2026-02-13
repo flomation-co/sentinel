@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -57,11 +58,22 @@ func (s *Service) RegisterUser(username string) (*persistence.User, error) {
 }
 
 func (s *Service) UpdatePassword(id string, password string) error {
+	u, err := s.database.GetUserByID(id)
+	if err != nil {
+		return err
+	}
+
+	if u == nil {
+		return errors.New("invalid user")
+	}
+
 	if err := s.database.UpdatePassword(id, password); err != nil {
 		return err
 	}
 
-	// TODO: Send Password Has Been Reset Email
+	if err := s.smtp.SendTemplatedEmail(u.Username, "Password Reset", "Your password has been reset", "The password on your account has been updated", "Login", fmt.Sprintf("%v", s.config.Security.LoginRedirect)); err != nil {
+		return err
+	}
 
 	return nil
 }
