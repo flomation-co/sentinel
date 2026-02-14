@@ -71,7 +71,7 @@ func (s *Service) UpdatePassword(id string, password string) error {
 		return err
 	}
 
-	if err := s.smtp.SendTemplatedEmail(u.Username, "Password Reset", "Your password has been reset", "The password on your account has been updated", "Login", fmt.Sprintf("%v", s.config.Security.LoginRedirect)); err != nil {
+	if err := s.smtp.SendTemplatedEmail(u.Username, "Your password has been reset", "Your password has been reset", "The password on your account has been updated", "Login", fmt.Sprintf("%v", s.config.Security.LoginRedirect)); err != nil {
 		return err
 	}
 
@@ -127,10 +127,36 @@ func (s *Service) GetUserByVerificationToken(token string) (*persistence.User, e
 	return s.database.GetUserByVerificationToken(token)
 }
 
+func (s *Service) GetUserByPasswordToken(token string) (*persistence.User, error) {
+	return s.database.GetUserByPasswordToken(token)
+}
+
 func (s *Service) UpdateFailedAttempts(id string) error {
 	return s.database.UpdateFailedAttempts(id)
 }
 
 func (s *Service) Verify(id string) error {
 	return s.database.Verify(id)
+}
+
+func (s *Service) GeneratePasswordReset(id string) error {
+	u, err := s.GetUserByID(id)
+	if err != nil {
+		return err
+	}
+
+	if u == nil {
+		return errors.New("invalid user for password reset")
+	}
+
+	token, err := s.database.GeneratePasswordReset(id)
+	if err != nil {
+		return err
+	}
+
+	if err := s.smtp.SendTemplatedEmail(u.Username, "Reset your password", "Continue resetting your password", "A password reset has been requested on your account, use the button below to reset your password", "Reset Password", fmt.Sprintf("%v/password?token=%v", s.config.Listener.URL, *token)); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -42,6 +42,9 @@ type Service struct {
 	stmtGetSessionUserID        *sqlx.NamedStmt
 	stmtGetSessionUsername      *sqlx.NamedStmt
 	stmtGetSessionRedirectURL   *sqlx.NamedStmt
+
+	stmtInsertPasswordReset    *sqlx.NamedStmt
+	stmtGetUserByPasswordToken *sqlx.NamedStmt
 }
 
 type baseConfiguration struct {
@@ -426,6 +429,37 @@ func (s *Service) configure() error {
 		    session s
 		WHERE
 		    s.id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtInsertPasswordReset, err = s.db.PrepareNamed(`
+		INSERT INTO password_reset (
+			user_id
+		) VALUES (
+		    :user_id
+		) RETURNING token;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetUserByPasswordToken, err = s.db.PrepareNamed(`
+		SELECT
+			u.id,
+			PGP_SYM_DECRYPT(u.username, :key) AS username,
+			u.created_at,
+			u.locked,
+			u.failed_attempt
+		FROM
+			"user" u
+		INNER JOIN
+			password_reset pr ON pr.user_id = u.id
+		WHERE
+			pr.token = :token
+		AND
+    		pr.expiration > CURRENT_TIMESTAMP - INTERVAL '10 minutes'
 	`)
 	if err != nil {
 		return err

@@ -108,6 +108,25 @@ func (s *Service) GetUserByVerificationToken(token string) (*User, error) {
 	return &u, nil
 }
 
+func (s *Service) GetUserByPasswordToken(token string) (*User, error) {
+	var u User
+
+	if err := s.stmtGetUserByPasswordToken.Get(&u, struct {
+		Token string `db:"token"`
+		Key   string `db:"key"`
+	}{
+		Token: token,
+		Key:   s.config.Database.EncryptionKey,
+	}); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &u, nil
+}
+
 func (s *Service) RegisterUser(username string) (*User, error) {
 	var id string
 	if err := s.stmtInsertUser.Get(&id, struct {
@@ -181,6 +200,18 @@ func (s *Service) Verify(userID string) error {
 	})
 
 	return err
+}
+
+func (s *Service) GeneratePasswordReset(userID string) (*string, error) {
+	var token string
+
+	err := s.stmtInsertPasswordReset.Get(&token, struct {
+		UserID string `db:"user_id"`
+	}{
+		UserID: userID,
+	})
+
+	return &token, err
 }
 
 func (s *Service) ResetFailedAttempts(userID string) error {

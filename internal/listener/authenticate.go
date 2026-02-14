@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	fragmentEnterEmailAddress = "email_address"
-	fragmentRegister          = "register"
-	fragmentPassword          = "password"
-	fragmentPasswordError     = "password_error"
-	fragmentSubmitPassword    = "submit_password"
-	fragmentSetPassword       = "set_new_password"
+	fragmentEnterEmailAddress         = "email_address"
+	fragmentRegister                  = "register"
+	fragmentPassword                  = "password"
+	fragmentPasswordError             = "password_error"
+	fragmentSubmitPassword            = "submit_password"
+	fragmentSetPassword               = "set_new_password"
+	fragmentForgottenPassword         = "forgot_password"
+	fragmentSubmitForgottenPassword   = "submit_forgot_password"
+	fragmentForgottenPasswordComplete = "forgot_password_complete"
 )
 
 func (s *Service) staticAssets(c *gin.Context) {
@@ -86,6 +89,73 @@ func (s *Service) setPassword(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (s *Service) resetPassword(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	u, err := s.user.GetUserByPasswordToken(token)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to get user by password token")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if u == nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	ip := c.ClientIP()
+	ua := c.Request.UserAgent()
+
+	sess, err := s.session.StartSession(session.Session{
+		IPAddress: &ip,
+		Device:    &ua,
+	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to start session")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.session.UpdateState(sess.ID, session.StateSetPassword); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to update session")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.session.SetSessionUserID(sess.ID, u.ID); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to set session user id")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	content, err := s.loadHTMLFragment("set_password")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to load html fragment")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	value := strings.ReplaceAll(*content, "$$USER$$", u.Username)
+	value = strings.ReplaceAll(value, "$$SESSION_ID$$", sess.ID)
+
+	c.Data(http.StatusOK, "text/html", []byte(value))
 }
 
 func (s *Service) verifyUser(c *gin.Context) {
@@ -432,6 +502,33 @@ func (s *Service) authenticate(c *gin.Context) {
 		}
 		c.Redirect(http.StatusTemporaryRedirect, url)
 		return
+
+	case fragmentForgottenPassword:
+		fragment = fragmentForgottenPassword
+
+	case fragmentSubmitForgottenPassword:
+		userID, err := s.session.GetSessionUserID(sessionID)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("unable to get session user ID")
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		if userID == nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
+		if err := s.user.GeneratePasswordReset(*userID); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("unable to generate password reset")
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		fragment = fragmentForgottenPasswordComplete
 
 	default:
 
