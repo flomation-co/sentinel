@@ -88,7 +88,7 @@ func (s *Service) setPassword(c *gin.Context) {
 		url = *s.config.Security.LoginRedirect
 	}
 
-	c.Redirect(http.StatusTemporaryRedirect, url)
+	c.Redirect(http.StatusFound, url)
 }
 
 func (s *Service) resetPassword(c *gin.Context) {
@@ -361,7 +361,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			url = *s.config.Security.LoginRedirect
 		}
 
-		c.Redirect(http.StatusTemporaryRedirect, url)
+		c.Redirect(http.StatusFound, url)
 		return
 
 	case fragmentSubmitPassword:
@@ -438,7 +438,7 @@ func (s *Service) authenticate(c *gin.Context) {
 		if s.config.Security.LoginRedirect != nil {
 			url = *s.config.Security.LoginRedirect
 		}
-		c.Redirect(http.StatusTemporaryRedirect, url)
+		c.Redirect(http.StatusFound, url)
 		return
 
 	case fragmentSetPassword:
@@ -500,7 +500,7 @@ func (s *Service) authenticate(c *gin.Context) {
 		if s.config.Security.LoginRedirect != nil {
 			url = *s.config.Security.LoginRedirect
 		}
-		c.Redirect(http.StatusTemporaryRedirect, url)
+		c.Redirect(http.StatusFound, url)
 		return
 
 	case fragmentForgottenPassword:
