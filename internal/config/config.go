@@ -21,6 +21,7 @@ type DatabaseConfig struct {
 type CookieConfig struct {
 	Domain     string `json:"domain" env:"COOKIE_DOMAIN" arg:"cookie-domain"`
 	Secure     bool   `json:"secure"`
+	HttpOnly   bool   `json:"http_only"`
 	Expiration int    `json:"expiration"`
 }
 

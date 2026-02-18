@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"flomation.app/sentinel/internal/security"
+
 	"flomation.app/sentinel/internal/assets"
 	"flomation.app/sentinel/internal/session"
 	"github.com/gin-gonic/gin"
@@ -269,7 +271,7 @@ func (s *Service) authenticate(c *gin.Context) {
 		}
 
 		sessionID = newSession.ID
-		c.SetCookie("flomation-sentinel-session-id", sessionID, 0, "/", c.Request.URL.Host, true, true)
+		c.SetCookie("flomation-sentinel-session-id", sessionID, 0, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 	}
 
 	sessionState, err := s.session.GetSessionState(sessionID)
@@ -346,7 +348,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		token, err := s.token.Create(u.ID, -1)
+		token, err := s.token.Create(u.ID, int64(s.config.Security.Cookie.Expiration))
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -354,7 +356,17 @@ func (s *Service) authenticate(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-		c.SetCookie("flomation-token", *token, 0, "/", c.Request.URL.Host, true, true)
+
+		c.SetCookie("flomation-token", *token, security.DefaultTokenExpirationSeconds, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		expiration := time.Now().Add(duration)
+		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("unable to update state expiration")
+			fragment = fragmentPasswordError
+			break
+		}
 
 		url := "https://www.google.com"
 		if s.config.Security.LoginRedirect != nil {
@@ -416,7 +428,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		token, err := s.token.Create(u.ID, -1)
+		token, err := s.token.Create(u.ID, int64(s.config.Security.Cookie.Expiration))
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -425,8 +437,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", c.Request.URL.Host, true, true)
-		if err := s.session.UpdateStateExpiration(sessionID, time.Now().Add(time.Duration(s.config.Security.Cookie.Expiration))); err != nil {
+		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		expiration := time.Now().Add(duration)
+		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to update state expiration")
@@ -478,7 +492,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		token, err := s.token.Create(*userID, -1)
+		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -487,8 +501,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", c.Request.URL.Host, true, true)
-		if err := s.session.UpdateStateExpiration(sessionID, time.Now().Add(time.Duration(s.config.Security.Cookie.Expiration))); err != nil {
+		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		expiration := time.Now().Add(duration)
+		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to update state expiration")
