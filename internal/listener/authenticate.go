@@ -271,7 +271,7 @@ func (s *Service) authenticate(c *gin.Context) {
 		}
 
 		sessionID = newSession.ID
-		c.SetCookie("flomation-sentinel-session-id", sessionID, 0, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		c.SetCookie("flomation-sentinel-session-id", sessionID, 0, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 	}
 
 	sessionState, err := s.session.GetSessionState(sessionID)
@@ -357,7 +357,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		c.SetCookie("flomation-token", *token, security.DefaultTokenExpirationSeconds, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		c.SetCookie("flomation-token", *token, security.DefaultTokenExpirationSeconds, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
@@ -437,7 +437,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
@@ -501,7 +501,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", c.Request.URL.Host, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
