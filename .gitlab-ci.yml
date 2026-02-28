@@ -11,6 +11,7 @@ stages:
   - deb-publish
   - publish
   - docker
+  - test-suite
   - Development
   - Production
 
@@ -259,6 +260,12 @@ build-docker:
     - main
   variables:
     BINARY_FILE_PATTERN: "dist/${PACKAGE_NAME}-amd64-linux-*"
+  needs:
+    - inject-metadata
+    - compile
+
+test-suite:
+  extends: .test-suite-template
   needs:
     - inject-metadata
     - compile
