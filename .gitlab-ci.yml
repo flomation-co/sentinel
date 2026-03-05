@@ -5,6 +5,7 @@ include:
 
 stages:
   - prepare
+  - sync
   - test
   - build
   - rpm-publish
@@ -269,3 +270,10 @@ test-suite:
   needs:
     - inject-metadata
     - compile
+
+sync-to-github:
+  extends: .sync-to-github-template
+  variables:
+    GIT_DEPTH: 0
+  only:
+    - main
