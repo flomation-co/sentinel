@@ -78,6 +78,8 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 			logoutUrl = *config.Security.LogoutRedirect
 		}
 
+		c.SetCookie("flomation-token", "", -1, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+
 		c.Redirect(http.StatusTemporaryRedirect, logoutUrl)
 	})
 
