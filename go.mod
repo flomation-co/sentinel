@@ -1,6 +1,6 @@
 module flomation.app/sentinel
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/flomation-co/gin-owasp-headers v0.0.0-20260109111326-c70a414e6954
