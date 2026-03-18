@@ -191,6 +191,16 @@ publish-docs:
   needs:
     - generate-docs
 
+publish-docs-live:
+  extends: .publish-docs-template
+  only:
+    - main
+  variables:
+    DOCS_S3_PATH: docs/flomation/config
+    PUBLISH_BUCKET: ${AWS_PACKAGE_BUCKET_LIVE}
+  needs:
+    - generate-docs
+
 publish-msi:
   extends: .publish-msi-template
   needs:
