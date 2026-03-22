@@ -9,6 +9,7 @@ type User struct {
 	ID                string    `db:"id"`
 	Username          string    `db:"username"`
 	Password          *string   `db:"password"`
+	DisplayName       *string   `db:"display_name"`
 	CreatedAt         time.Time `db:"created_at"`
 	VerificationToken *string   `db:"verification_token"`
 	Locked            bool      `db:"locked"`
@@ -221,6 +222,20 @@ func (s *Service) ResetFailedAttempts(userID string) error {
 	}{
 		UserID: userID,
 		Key:    s.config.Database.EncryptionKey,
+	})
+
+	return err
+}
+
+func (s *Service) UpdateDisplayName(userID string, displayName string) error {
+	_, err := s.stmtUpdateDisplayName.Exec(struct {
+		UserID      string `db:"id"`
+		DisplayName string `db:"display_name"`
+		Key         string `db:"key"`
+	}{
+		UserID:      userID,
+		DisplayName: displayName,
+		Key:         s.config.Database.EncryptionKey,
 	})
 
 	return err

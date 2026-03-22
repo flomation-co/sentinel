@@ -31,6 +31,7 @@ type Service struct {
 	stmtUpdateFailedAttempts         *sqlx.NamedStmt
 	stmtResetFailedAttempts          *sqlx.NamedStmt
 	stmtVerifyUser                   *sqlx.NamedStmt
+	stmtUpdateDisplayName            *sqlx.NamedStmt
 
 	stmtInsertSession           *sqlx.NamedStmt
 	stmtClearSession            *sqlx.NamedStmt
@@ -153,6 +154,7 @@ func (s *Service) configure() error {
 		SELECT
 		    id,
 		    PGP_SYM_DECRYPT(username, :key) AS username,
+		    PGP_SYM_DECRYPT(display_name, :key) AS display_name,
 		    created_at,
 		    locked,
 		    failed_attempt
@@ -169,6 +171,7 @@ func (s *Service) configure() error {
 		SELECT
 		    id,
 		    PGP_SYM_DECRYPT(username, :key) AS username,
+		    PGP_SYM_DECRYPT(display_name, :key) AS display_name,
 		    created_at,
 			verification_token,
 		    locked,
@@ -186,6 +189,7 @@ func (s *Service) configure() error {
 		SELECT
 		    id,
 		    PGP_SYM_DECRYPT(username, :key) AS username,
+		    PGP_SYM_DECRYPT(display_name, :key) AS display_name,
 		    created_at,
 		    locked,
 		    failed_attempt
@@ -206,6 +210,7 @@ func (s *Service) configure() error {
 		SELECT
 		    id,
 		    PGP_SYM_DECRYPT(username, :key) AS username,
+		    PGP_SYM_DECRYPT(display_name, :key) AS display_name,
 		    created_at,
 		    locked,
 		    failed_attempt
@@ -449,6 +454,7 @@ func (s *Service) configure() error {
 		SELECT
 			u.id,
 			PGP_SYM_DECRYPT(u.username, :key) AS username,
+			PGP_SYM_DECRYPT(u.display_name, :key) AS display_name,
 			u.created_at,
 			u.locked,
 			u.failed_attempt
@@ -460,6 +466,18 @@ func (s *Service) configure() error {
 			pr.token = :token
 		AND
     		pr.expiration > CURRENT_TIMESTAMP - INTERVAL '10 minutes'
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtUpdateDisplayName, err = s.db.PrepareNamed(`
+		UPDATE
+		    "user"
+		SET
+		    display_name = PGP_SYM_ENCRYPT(:display_name, :key)
+		WHERE
+		    id = :id
 	`)
 	if err != nil {
 		return err
