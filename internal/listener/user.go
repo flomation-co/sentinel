@@ -66,6 +66,78 @@ func (s *Service) getUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user_id": userID,
+		"user_id":      userID,
+		"display_name": u.DisplayName,
+	})
+}
+
+func (s *Service) getAccount(c *gin.Context) {
+	v, exists := c.Get(FlomationUserID)
+	if !exists {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	userID := v.(string)
+
+	u, err := s.user.GetUserByID(userID)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if u == nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":           userID,
+		"username":     u.Username,
+		"display_name": u.DisplayName,
+		"created_on":   u.CreatedAt,
+		"locked":       u.Locked,
+	})
+}
+
+type UpdateDisplayNameRequest struct {
+	DisplayName string `json:"display_name"`
+}
+
+func (s *Service) updateUser(c *gin.Context) {
+	v, exists := c.Get(FlomationUserID)
+	if !exists {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	userID := v.(string)
+
+	var request UpdateDisplayNameRequest
+	if err := c.BindJSON(&request); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to bind json")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	if err := s.user.UpdateDisplayName(userID, request.DisplayName); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to update display name")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	u, err := s.user.GetUserByID(userID)
+	if err != nil {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user_id":      userID,
+		"display_name": u.DisplayName,
 	})
 }

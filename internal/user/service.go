@@ -160,3 +160,7 @@ func (s *Service) GeneratePasswordReset(id string) error {
 
 	return nil
 }
+
+func (s *Service) UpdateDisplayName(id string, displayName string) error {
+	return s.database.UpdateDisplayName(id, displayName)
+}

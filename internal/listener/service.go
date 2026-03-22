@@ -86,6 +86,8 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.POST("/api/token", s.issueToken)
 	s.engine.POST("/api/user", s.registerUser)
 	s.engine.GET("/api/user", Sentinel(s.config), s.getUser)
+	s.engine.PUT("/api/user", Sentinel(s.config), s.updateUser)
+	s.engine.GET("/api/account", Sentinel(s.config), s.getAccount)
 
 	return &s, nil
 }
