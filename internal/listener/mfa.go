@@ -3,7 +3,9 @@ package listener
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
+	"flomation.app/sentinel/internal/assets"
 	"github.com/gin-gonic/gin"
 	"github.com/pquerna/otp"
 	log "github.com/sirupsen/logrus"
@@ -19,23 +21,23 @@ func (s *Service) mfaManage(c *gin.Context) {
 	userID := v.(string)
 	enrolled, _ := s.mfa.IsEnrolled(userID)
 
+	// The header template already opens a <form>, so we set its action dynamically
+	// via JavaScript and use the existing form rather than nesting forms.
 	var content string
 	if enrolled {
 		content = `<div data-lang="mfa_manage">
 			<h2>Multi-Factor Authentication</h2>
 			<p>MFA is currently <strong>enabled</strong> on your account.</p>
-			<form method="POST" action="/mfa/disable">
-				<p>Enter your current authenticator code to disable MFA:</p>
-				<div class="mfa_container">
-					<input type="text" name="mfa_1" id="mfa_1" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_2')" onfocus="this.value=''" autofocus />
-					<input type="text" name="mfa_2" id="mfa_2" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_3')" onfocus="this.value=''" />
-					<input type="text" name="mfa_3" id="mfa_3" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_4')" onfocus="this.value=''" />
-					<input type="text" name="mfa_4" id="mfa_4" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_5')" onfocus="this.value=''" />
-					<input type="text" name="mfa_5" id="mfa_5" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_6')" onfocus="this.value=''" />
-					<input type="text" name="mfa_6" id="mfa_6" required maxlength="1" class="input_bg input_mfa" onfocus="this.value=''" />
-				</div>
-				<input type="submit" value="Disable MFA" class="button button-continue" style="background-color: #be0000;"/>
-			</form>
+			<p>Enter your current authenticator code to disable MFA:</p>
+			<div class="mfa_container">
+				<input type="text" name="mfa_1" id="mfa_1" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_2')" onfocus="this.value=''" autofocus />
+				<input type="text" name="mfa_2" id="mfa_2" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_3')" onfocus="this.value=''" />
+				<input type="text" name="mfa_3" id="mfa_3" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_4')" onfocus="this.value=''" />
+				<input type="text" name="mfa_4" id="mfa_4" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_5')" onfocus="this.value=''" />
+				<input type="text" name="mfa_5" id="mfa_5" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_6')" onfocus="this.value=''" />
+				<input type="text" name="mfa_6" id="mfa_6" required maxlength="1" class="input_bg input_mfa" onfocus="this.value=''" />
+			</div>
+			<input type="submit" value="Disable MFA" class="button button-continue" style="background-color: #be0000;" onclick="this.form.action='/mfa/disable'"/>
 			<script>function setFocus(id){document.getElementById(id)?.focus();}</script>
 		</div>`
 	} else {
@@ -43,9 +45,7 @@ func (s *Service) mfaManage(c *gin.Context) {
 			<h2>Multi-Factor Authentication</h2>
 			<p>MFA is currently <strong>not enabled</strong> on your account.</p>
 			<p>Enabling MFA adds an extra layer of security by requiring a code from your authenticator app when logging in.</p>
-			<form method="POST" action="/mfa/enrol">
-				<input type="submit" value="Enable MFA" class="button button-continue"/>
-			</form>
+			<input type="submit" value="Enable MFA" class="button button-continue" onclick="this.form.action='/mfa/enrol'"/>
 		</div>`
 	}
 
@@ -89,8 +89,9 @@ func (s *Service) mfaEnrol(c *gin.Context) {
 		return
 	}
 
-	// Wrap in a form
-	page := s.wrapMFAPage(fmt.Sprintf(`<form method="POST" action="/mfa/verify">%s</form>`, *fragment))
+	// The header template provides the <form>, set action via JS on submit
+	wrappedFragment := *fragment + `<script>document.getElementById('form').action='/mfa/verify';</script>`
+	page := s.wrapMFAPage(wrappedFragment)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
 }
 
@@ -158,7 +159,7 @@ func (s *Service) mfaVerify(c *gin.Context) {
 		content := `<div>
 			<h2>Invalid Code</h2>
 			<p>The code you entered was incorrect. Please try again.</p>
-			<a href="/mfa" class="button button-continue">Try Again</a>
+			<div><a href="/mfa" class="button button-continue">Try Again</a></div>
 		</div>`
 		page := s.wrapMFAPage(content)
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
@@ -171,14 +172,12 @@ func (s *Service) mfaVerify(c *gin.Context) {
 		return
 	}
 
-	// Clear the key cookie
 	c.SetCookie("flomation-mfa-key", "", -1, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
 
 	content := `<div>
 		<h2>MFA Enabled</h2>
 		<p>Multi-factor authentication has been successfully enabled on your account.</p>
 		<p>You will now be required to enter a code from your authenticator app when logging in.</p>
-		<script>setTimeout(function(){ window.close(); }, 3000);</script>
 	</div>`
 	page := s.wrapMFAPage(content)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
@@ -199,7 +198,7 @@ func (s *Service) mfaDisable(c *gin.Context) {
 		content := `<div>
 			<h2>Invalid Code</h2>
 			<p>The code you entered was incorrect. MFA has not been disabled.</p>
-			<a href="/mfa" class="button button-continue">Try Again</a>
+			<div><a href="/mfa" class="button button-continue">Try Again</a></div>
 		</div>`
 		page := s.wrapMFAPage(content)
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
@@ -215,7 +214,6 @@ func (s *Service) mfaDisable(c *gin.Context) {
 	content := `<div>
 		<h2>MFA Disabled</h2>
 		<p>Multi-factor authentication has been removed from your account.</p>
-		<script>setTimeout(function(){ window.close(); }, 3000);</script>
 	</div>`
 	page := s.wrapMFAPage(content)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
@@ -230,23 +228,19 @@ func collectMFACode(c *gin.Context) string {
 	return code
 }
 
-// wrapMFAPage wraps MFA content in the Sentinel page template.
+// wrapMFAPage wraps MFA content in the Sentinel authenticate page template.
 func (s *Service) wrapMFAPage(content string) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Flomation - MFA</title>
-	<link rel="stylesheet" href="/assets/css/style.css">
-	<link rel="stylesheet" href="https://pro.fontawesome.com/releases/v6.0.0-beta3/css/all.css">
-</head>
-<body>
-	<div class="container">
-		<div class="inner_container">
-			%s
-		</div>
-	</div>
-</body>
-</html>`, content)
+	header, err := assets.Fragments.ReadFile("authenticate/default/header.html")
+	if err != nil {
+		return content
+	}
+	footer, err := assets.Fragments.ReadFile("authenticate/default/footer.html")
+	if err != nil {
+		return content
+	}
+
+	// The header opens a <form> and the footer closes it.
+	// Replace the session placeholder since we're not in a session flow.
+	h := strings.ReplaceAll(string(header), "$$SESSION_ID$$", "")
+	return h + content + string(footer)
 }
