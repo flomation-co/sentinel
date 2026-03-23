@@ -20,6 +20,8 @@ const (
 	fragmentPassword                  = "password"
 	fragmentPasswordError             = "password_error"
 	fragmentSubmitPassword            = "submit_password"
+	fragmentSubmitMFA                 = "submit_mfa"
+	fragmentEnterMFA                  = "enter_mfa"
 	fragmentSetPassword               = "set_new_password"
 	fragmentForgottenPassword         = "forgot_password"
 	fragmentSubmitForgottenPassword   = "submit_forgot_password"
@@ -420,6 +422,20 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
+		// Check if user has MFA enabled
+		mfaEnrolled, _ := s.mfa.IsEnrolled(u.ID)
+		if mfaEnrolled {
+			if err := s.session.UpdateState(sessionID, session.StateDonePassword); err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Error("unable to set session state for MFA")
+				fragment = fragmentPasswordError
+				break
+			}
+			fragment = fragmentEnterMFA
+			break
+		}
+
 		if err := s.session.UpdateState(sessionID, session.StateComplete); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -444,6 +460,50 @@ func (s *Service) authenticate(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to update state expiration")
+			fragment = fragmentPasswordError
+			break
+		}
+
+		url := "https://www.google.com"
+		if s.config.Security.LoginRedirect != nil {
+			url = *s.config.Security.LoginRedirect
+		}
+		c.Redirect(http.StatusFound, url)
+		return
+
+	case fragmentSubmitMFA:
+		code := collectMFACode(c)
+
+		userID, err := s.session.GetSessionUserID(sessionID)
+		if err != nil || userID == nil {
+			fragment = fragmentPasswordError
+			break
+		}
+
+		valid, err := s.mfa.ValidateCode(*userID, code)
+		if err != nil || !valid {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Warn("invalid MFA code")
+			fragment = fragmentEnterMFA
+			break
+		}
+
+		if err := s.session.UpdateState(sessionID, session.StateComplete); err != nil {
+			fragment = fragmentPasswordError
+			break
+		}
+
+		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		if err != nil {
+			fragment = fragmentPasswordError
+			break
+		}
+
+		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		expiration := time.Now().Add(duration)
+		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			fragment = fragmentPasswordError
 			break
 		}
