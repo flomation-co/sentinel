@@ -163,8 +163,26 @@
 
         .mfa_container {
             display: flex;
+            justify-content: center;
             margin-top: 20px;
             margin-bottom: 20px;
+        }
+
+        .input_mfa_single {
+            width: 100%;
+            max-width: 220px;
+            height: 56px;
+            text-align: center;
+            font-size: 2em;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.4em;
+            border: 2px solid #5c2482;
+            border-radius: 8px;
+            margin: 0;
+        }
+
+        .input_mfa_single:focus {
+            border-color: var(--highlight-colour);
         }
 
         .center-image {

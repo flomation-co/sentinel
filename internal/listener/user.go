@@ -91,12 +91,15 @@ func (s *Service) getAccount(c *gin.Context) {
 		return
 	}
 
+	mfaEnabled, _ := s.mfa.IsEnrolled(userID)
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":           userID,
 		"username":     u.Username,
 		"display_name": u.DisplayName,
 		"created_on":   u.CreatedAt,
 		"locked":       u.Locked,
+		"mfa_enabled":  mfaEnabled,
 	})
 }
 

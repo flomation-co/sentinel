@@ -46,6 +46,11 @@ type Service struct {
 
 	stmtInsertPasswordReset    *sqlx.NamedStmt
 	stmtGetUserByPasswordToken *sqlx.NamedStmt
+
+	stmtCreateMFADevice       *sqlx.NamedStmt
+	stmtGetMFADeviceByUserID  *sqlx.NamedStmt
+	stmtEnableMFADevice       *sqlx.NamedStmt
+	stmtDeleteMFADevice       *sqlx.NamedStmt
 }
 
 type baseConfiguration struct {
@@ -478,6 +483,37 @@ func (s *Service) configure() error {
 		    display_name = PGP_SYM_ENCRYPT(:display_name, :key)
 		WHERE
 		    id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtCreateMFADevice, err = s.db.PrepareNamed(`
+		INSERT INTO mfa_device (user_id, secret)
+		VALUES (:user_id, PGP_SYM_ENCRYPT(:secret, :key))
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetMFADeviceByUserID, err = s.db.PrepareNamed(`
+		SELECT id, user_id, PGP_SYM_DECRYPT(secret, :key) AS secret, enabled, enrolled_at
+		FROM mfa_device WHERE user_id = :user_id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtEnableMFADevice, err = s.db.PrepareNamed(`
+		UPDATE mfa_device SET enabled = true WHERE id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtDeleteMFADevice, err = s.db.PrepareNamed(`
+		DELETE FROM mfa_device WHERE user_id = :user_id
 	`)
 	if err != nil {
 		return err

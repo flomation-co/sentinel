@@ -3,6 +3,7 @@ package listener
 import (
 	"net/http"
 
+	"flomation.app/sentinel/internal/mfa"
 	"flomation.app/sentinel/internal/session"
 	"flomation.app/sentinel/internal/user"
 
@@ -22,6 +23,7 @@ type Service struct {
 	token   *security.Service
 	user    *user.Service
 	session *session.Service
+	mfa     *mfa.Service
 }
 
 func NewListener(config *config.Config, sec *security.Service, db *persistence.Service) (*Service, error) {
@@ -33,6 +35,7 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 		token:   sec,
 		user:    user.New(config, db),
 		session: session.New(config, db),
+		mfa:     mfa.New(config, db),
 	}
 
 	m := owasp.
@@ -88,6 +91,12 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/api/user", Sentinel(s.config), s.getUser)
 	s.engine.PUT("/api/user", Sentinel(s.config), s.updateUser)
 	s.engine.GET("/api/account", Sentinel(s.config), s.getAccount)
+
+	s.engine.GET("/mfa", Sentinel(s.config), s.mfaManage)
+	s.engine.POST("/mfa/enrol", Sentinel(s.config), s.mfaEnrol)
+	s.engine.GET("/mfa/qr", Sentinel(s.config), s.mfaQR)
+	s.engine.POST("/mfa/verify", Sentinel(s.config), s.mfaVerify)
+	s.engine.POST("/mfa/disable", Sentinel(s.config), s.mfaDisable)
 
 	return &s, nil
 }

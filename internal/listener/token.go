@@ -14,8 +14,9 @@ type TokenResponse struct {
 }
 
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string  `json:"username"`
+	Password string  `json:"password"`
+	MFACode  *string `json:"mfa_code,omitempty"`
 }
 
 func (s *Service) issueToken(c *gin.Context) {
@@ -40,6 +41,27 @@ func (s *Service) issueToken(c *gin.Context) {
 	if u == nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
+	}
+
+	// Check MFA
+	mfaEnrolled, _ := s.mfa.IsEnrolled(u.ID)
+	if mfaEnrolled {
+		if request.MFACode == nil || *request.MFACode == "" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":        "mfa_required",
+				"message":      "Multi-factor authentication code required",
+			})
+			return
+		}
+
+		valid, _ := s.mfa.ValidateCode(u.ID, *request.MFACode)
+		if !valid {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "mfa_invalid",
+				"message": "Invalid MFA code",
+			})
+			return
+		}
 	}
 
 	ip := c.ClientIP()

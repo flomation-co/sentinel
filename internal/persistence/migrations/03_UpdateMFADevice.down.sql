@@ -1,0 +1,8 @@
+DROP TABLE IF EXISTS mfa_device;
+
+CREATE TABLE mfa_device (
+    device_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    secret BYTEA NOT NULL,
+    enrolled_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
