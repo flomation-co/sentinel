@@ -50,7 +50,9 @@ func (s *Service) RegisterUser(username string) (*persistence.User, error) {
 	}).Info("sending verification email")
 	if u.VerificationToken != nil {
 		if err := s.smtp.SendTemplatedEmail(username, "Welcome to Flomation", "Continue setting up your account", "Thanks for signing up! Please set your password so we can keep your account safe and get you started.", "Set Password", fmt.Sprintf("%v/verify?token=%v", s.config.Listener.URL, *u.VerificationToken)); err != nil {
-			return nil, err
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Warn("unable to send verification email - registration will continue without it")
 		}
 	}
 
@@ -72,7 +74,9 @@ func (s *Service) UpdatePassword(id string, password string) error {
 	}
 
 	if err := s.smtp.SendTemplatedEmail(u.Username, "Your password has been reset", "Your password has been reset", "The password on your account has been updated", "Login", fmt.Sprintf("%v", s.config.Security.LoginRedirect)); err != nil {
-		return err
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Warn("unable to send password reset confirmation email")
 	}
 
 	return nil
