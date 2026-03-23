@@ -87,6 +87,17 @@ func (s *Service) setPassword(c *gin.Context) {
 		return
 	}
 
+	token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to create token")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+
 	c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 }
 

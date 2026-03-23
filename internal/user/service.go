@@ -74,7 +74,9 @@ func (s *Service) UpdatePassword(id string, password string) error {
 	}
 
 	if err := s.smtp.SendTemplatedEmail(u.Username, "Your password has been reset", "Your password has been reset", "The password on your account has been updated", "Login", fmt.Sprintf("%v", s.config.Security.LoginRedirect)); err != nil {
-		return err
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Warn("unable to send password reset confirmation email")
 	}
 
 	return nil
