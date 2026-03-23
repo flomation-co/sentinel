@@ -46,7 +46,11 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.Use(m.Middleware())
 
 	s.engine.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusPermanentRedirect, "/authenticate")
+		target := "/authenticate"
+		if c.Request.URL.RawQuery != "" {
+			target += "?" + c.Request.URL.RawQuery
+		}
+		c.Redirect(http.StatusTemporaryRedirect, target)
 	})
 
 	s.engine.GET("/authenticate", s.authenticate)
