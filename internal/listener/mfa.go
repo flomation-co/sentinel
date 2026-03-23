@@ -30,15 +30,11 @@ func (s *Service) mfaManage(c *gin.Context) {
 			<p>MFA is currently <strong>enabled</strong> on your account.</p>
 			<p>Enter your current authenticator code to disable MFA:</p>
 			<div class="mfa_container">
-				<input type="text" name="mfa_1" id="mfa_1" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_2')" onfocus="this.value=''" autofocus />
-				<input type="text" name="mfa_2" id="mfa_2" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_3')" onfocus="this.value=''" />
-				<input type="text" name="mfa_3" id="mfa_3" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_4')" onfocus="this.value=''" />
-				<input type="text" name="mfa_4" id="mfa_4" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_5')" onfocus="this.value=''" />
-				<input type="text" name="mfa_5" id="mfa_5" required maxlength="1" class="input_bg input_mfa" onkeyup="setFocus('mfa_6')" onfocus="this.value=''" />
-				<input type="text" name="mfa_6" id="mfa_6" required maxlength="1" class="input_bg input_mfa" onfocus="this.value=''" />
+				<input type="text" name="mfa_code" id="mfa_code" required maxlength="6" minlength="6"
+				       pattern="[0-9]{6}" inputmode="numeric" class="input_bg input_mfa_single" autofocus
+				       oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
 			</div>
 			<input type="submit" value="Disable MFA" class="button button-continue" style="background-color: #be0000;" onclick="this.form.action='/mfa/disable'"/>
-			<script>function setFocus(id){document.getElementById(id)?.focus();}</script>
 		</div>`
 	} else {
 		content = `<div data-lang="mfa_manage">
@@ -83,15 +79,15 @@ func (s *Service) mfaEnrol(c *gin.Context) {
 	// Store the key URL in session for QR code generation
 	c.SetCookie("flomation-mfa-key", key.URL(), 300, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
 
-	fragment, err := s.loadHTMLFragment("enrol_mfa")
+	// Read just the fragment content (not wrapped in header/footer)
+	fragmentContent, err := assets.Fragments.ReadFile("authenticate/fragment/enrol_mfa.html")
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	// The header template provides the <form>, set action via JS on submit
-	wrappedFragment := *fragment + `<script>document.getElementById('form').action='/mfa/verify';</script>`
-	page := s.wrapMFAPage(wrappedFragment)
+	content := string(fragmentContent) + `<script>document.getElementById('form').action='/mfa/verify';</script>`
+	page := s.wrapMFAPage(content)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
 }
 
@@ -219,13 +215,9 @@ func (s *Service) mfaDisable(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(page))
 }
 
-// collectMFACode reads the 6 individual MFA input fields and combines them.
+// collectMFACode reads the MFA code from the single input field.
 func collectMFACode(c *gin.Context) string {
-	code := ""
-	for i := 1; i <= 6; i++ {
-		code += c.DefaultPostForm(fmt.Sprintf("mfa_%d", i), "")
-	}
-	return code
+	return c.DefaultPostForm("mfa_code", "")
 }
 
 // wrapMFAPage wraps MFA content in the Sentinel authenticate page template.
@@ -242,5 +234,8 @@ func (s *Service) wrapMFAPage(content string) string {
 	// The header opens a <form> and the footer closes it.
 	// Replace the session placeholder since we're not in a session flow.
 	h := strings.ReplaceAll(string(header), "$$SESSION_ID$$", "")
+	// Fix relative asset paths for non-root pages like /mfa/*
+	h = strings.ReplaceAll(h, `"assets/`, `"/assets/`)
+	h = strings.ReplaceAll(h, `href="assets/`, `href="/assets/`)
 	return h + content + string(footer)
 }
