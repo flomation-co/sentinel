@@ -87,12 +87,7 @@ func (s *Service) setPassword(c *gin.Context) {
 		return
 	}
 
-	url := "https://www.google.com"
-	if s.config.Security.LoginRedirect != nil {
-		url = *s.config.Security.LoginRedirect
-	}
-
-	c.Redirect(http.StatusFound, url)
+	c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 }
 
 func (s *Service) resetPassword(c *gin.Context) {
@@ -370,12 +365,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		url := "https://www.google.com"
-		if s.config.Security.LoginRedirect != nil {
-			url = *s.config.Security.LoginRedirect
-		}
-
-		c.Redirect(http.StatusFound, url)
+		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 
 	case fragmentSubmitPassword:
@@ -464,11 +454,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		url := "https://www.google.com"
-		if s.config.Security.LoginRedirect != nil {
-			url = *s.config.Security.LoginRedirect
-		}
-		c.Redirect(http.StatusFound, url)
+		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 
 	case fragmentSubmitMFA:
@@ -508,11 +494,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		url := "https://www.google.com"
-		if s.config.Security.LoginRedirect != nil {
-			url = *s.config.Security.LoginRedirect
-		}
-		c.Redirect(http.StatusFound, url)
+		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 
 	case fragmentSetPassword:
@@ -572,11 +554,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		url := "https://www.google.com"
-		if s.config.Security.LoginRedirect != nil {
-			url = *s.config.Security.LoginRedirect
-		}
-		c.Redirect(http.StatusFound, url)
+		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 
 	case fragmentForgottenPassword:
@@ -648,4 +626,25 @@ func (s *Service) loadHTMLFragment(fragmentName string) (*string, error) {
 func (s *Service) validateState(formState string, sessionState int) error {
 	fmt.Printf("Validate State - Form: %v Session %v\n", formState, sessionState)
 	return nil
+}
+
+// getRedirectURL returns the session's stored redirect_url if set,
+// otherwise falls back to the configured LoginRedirect.
+func (s *Service) getRedirectURL(sessionID string) string {
+	url := "https://www.google.com"
+	if s.config.Security.LoginRedirect != nil {
+		url = *s.config.Security.LoginRedirect
+	}
+
+	redirectURL, err := s.session.GetSessionRedirectURL(sessionID)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Warn("unable to get session redirect URL")
+		return url
+	}
+
+	if redirectURL != nil && *redirectURL != "" {
+		return *redirectURL
+	}
+
+	return url
 }

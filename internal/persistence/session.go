@@ -148,14 +148,12 @@ func (s *Service) GetSessionUsername(ID string) (*string, error) {
 }
 
 func (s *Service) GetSessionRedirectURL(ID string) (*string, error) {
-	var result string
+	var result sql.NullString
 
-	if err := s.stmtGetSessionUsername.Get(&result, struct {
-		ID  string `db:"id"`
-		Key string `db:"key"`
+	if err := s.stmtGetSessionRedirectURL.Get(&result, struct {
+		ID string `db:"id"`
 	}{
-		ID:  ID,
-		Key: s.config.Database.EncryptionKey,
+		ID: ID,
 	}); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -164,5 +162,9 @@ func (s *Service) GetSessionRedirectURL(ID string) (*string, error) {
 		return nil, err
 	}
 
-	return &result, nil
+	if !result.Valid || result.String == "" {
+		return nil, nil
+	}
+
+	return &result.String, nil
 }
