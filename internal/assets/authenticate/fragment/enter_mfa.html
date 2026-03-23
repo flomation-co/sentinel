@@ -5,10 +5,18 @@
     <input type="hidden" name="form_state" id="form_state" maxlength="255" value="submit_mfa"/>
 
     <div class="mfa_container">
-        <input type="text" name="mfa_code" id="mfa_code" required maxlength="6" minlength="6"
-               pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code"
-               class="input_bg input_mfa_single" autofocus
-               oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+        <div class="mfa_boxes">
+            <div class="mfa_box"></div>
+            <div class="mfa_box"></div>
+            <div class="mfa_box"></div>
+            <div class="mfa_box"></div>
+            <div class="mfa_box"></div>
+            <div class="mfa_box"></div>
+            <input type="text" name="mfa_code" id="mfa_code" required maxlength="6" minlength="6"
+                   pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code"
+                   class="input_mfa_single" autofocus
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+        </div>
     </div>
 
     <div>

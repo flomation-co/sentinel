@@ -30,9 +30,17 @@ func (s *Service) mfaManage(c *gin.Context) {
 			<p>MFA is currently <strong>enabled</strong> on your account.</p>
 			<p>Enter your current authenticator code to disable MFA:</p>
 			<div class="mfa_container">
-				<input type="text" name="mfa_code" id="mfa_code" required maxlength="6" minlength="6"
-				       pattern="[0-9]{6}" inputmode="numeric" class="input_bg input_mfa_single" autofocus
-				       oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+				<div class="mfa_boxes">
+					<div class="mfa_box"></div>
+					<div class="mfa_box"></div>
+					<div class="mfa_box"></div>
+					<div class="mfa_box"></div>
+					<div class="mfa_box"></div>
+					<div class="mfa_box"></div>
+					<input type="text" name="mfa_code" id="mfa_code" required maxlength="6" minlength="6"
+					       pattern="[0-9]{6}" inputmode="numeric" class="input_mfa_single" autofocus
+					       oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+				</div>
 			</div>
 			<input type="submit" value="Disable MFA" class="button button-continue" style="background-color: #be0000;" onclick="this.form.action='/mfa/disable'"/>
 		</div>`
