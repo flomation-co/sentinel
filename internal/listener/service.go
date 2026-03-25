@@ -26,6 +26,19 @@ type Service struct {
 	mfa     *mfa.Service
 }
 
+func corsPublic(c *gin.Context) {
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if c.Request.Method == "OPTIONS" {
+		c.AbortWithStatus(204)
+		return
+	}
+
+	c.Next()
+}
+
 func NewListener(config *config.Config, sec *security.Service, db *persistence.Service) (*Service, error) {
 	gin.SetMode(gin.ReleaseMode)
 
@@ -62,13 +75,22 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 
 	s.engine.NoRoute(s.staticAssets)
 
-	s.engine.GET("/version", func(c *gin.Context) {
+	s.engine.GET("/version", corsPublic, func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"version":    version.Version,
 			"build_date": version.BuiltDate,
 			"hash":       version.GetHash(),
 		})
 	})
+
+	s.engine.GET("/health", corsPublic, func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+		})
+	})
+
+	s.engine.OPTIONS("/version", corsPublic)
+	s.engine.OPTIONS("/health", corsPublic)
 
 	s.engine.GET("/logout", owasp.NewSecureHeadersMiddleware().ClearSiteData(
 		true,
