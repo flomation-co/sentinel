@@ -5,7 +5,7 @@ include:
 
 stages:
   - prepare
-  - sync
+#  - sync
   - test
   - build
   - docs
@@ -415,9 +415,9 @@ test-suite:
     - inject-metadata
     - compile
 
-sync-to-github:
-  extends: .sync-to-github-template
-  variables:
-    GIT_DEPTH: 0
-  only:
-    - main
+#sync-to-github:
+#  extends: .sync-to-github-template
+#  variables:
+#    GIT_DEPTH: 0
+#  only:
+#    - main
