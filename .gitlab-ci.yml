@@ -119,7 +119,7 @@ build-rpm-8-arm64:
     expire_in: 30 days
 
 build-rpm-9-arm64:
-  extends: .build-rpm-templat;
+  extends: .build-rpm-template
   only:
     - main
   image: rockylinux/rockylinux:9
