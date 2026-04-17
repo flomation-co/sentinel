@@ -121,7 +121,7 @@ build-rpm-8-arm64:
 build-rpm-9-arm64:
   extends: .build-rpm-templat;
   only:
-    - maine
+    - main
   image: rockylinux/rockylinux:9
   variables:
     EL_VERSION: "9"
