@@ -80,6 +80,12 @@ func (s *Service) issueToken(c *gin.Context) {
 		return
 	}
 
+	location := ""
+	if sess.Location != nil {
+		location = *sess.Location
+	}
+	go s.user.CheckNewDevice(u.ID, ip, ua, location)
+
 	tkn, err := s.token.Create(u.ID, -1)
 	if err != nil {
 		log.WithFields(log.Fields{

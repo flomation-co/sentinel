@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"flomation.app/sentinel/internal/geo"
 	"flomation.app/sentinel/internal/security"
 
 	"flomation.app/sentinel/internal/assets"
@@ -13,6 +14,24 @@ import (
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
+
+// checkNewDeviceFromContext fires the new-device check asynchronously using
+// IP and User-Agent from the Gin request context.
+func (s *Service) checkNewDeviceFromContext(c *gin.Context, userID string) {
+	ip := c.ClientIP()
+	ua := c.Request.UserAgent()
+	cfg := *s.config
+
+	go func() {
+		location := ""
+		if ip != "127.0.0.1" {
+			if data, err := geo.GetGeoDataFromIP(cfg, ip); err == nil && data != nil {
+				location = fmt.Sprintf("%s, %s", data.Location.City, data.Location.Country.Name)
+			}
+		}
+		s.user.CheckNewDevice(userID, ip, ua, location)
+	}()
+}
 
 const (
 	fragmentEnterEmailAddress         = "email_address"
@@ -376,6 +395,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
+		s.checkNewDeviceFromContext(c, u.ID)
 		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 
@@ -465,6 +485,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
+		s.checkNewDeviceFromContext(c, u.ID)
 		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 
@@ -505,6 +526,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
+		s.checkNewDeviceFromContext(c, *userID)
 		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 

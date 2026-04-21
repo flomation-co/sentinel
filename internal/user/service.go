@@ -1,6 +1,8 @@
 package user
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -167,4 +169,84 @@ func (s *Service) GeneratePasswordReset(id string) error {
 
 func (s *Service) UpdateDisplayName(id string, displayName string) error {
 	return s.database.UpdateDisplayName(id, displayName)
+}
+
+// CheckNewDevice checks if the user has logged in from this device before.
+// If not, sends a notification email and registers the device. If known,
+// updates the last_seen_at timestamp.
+func (s *Service) CheckNewDevice(userID, ipAddress, userAgent, location string) {
+	hash := deviceHash(userID, userAgent, ipAddress)
+
+	known, err := s.database.IsKnownDevice(userID, hash)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"user_id": userID,
+		}).Warn("unable to check known device")
+		return
+	}
+
+	if known {
+		_ = s.database.TouchKnownDevice(userID, hash)
+		return
+	}
+
+	// Register the device first so a retry won't send duplicate emails.
+	if err := s.database.RegisterKnownDevice(userID, hash, ipAddress, userAgent, location); err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"user_id": userID,
+		}).Warn("unable to register known device")
+		return
+	}
+
+	u, err := s.database.GetUserByID(userID)
+	if err != nil || u == nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"user_id": userID,
+		}).Warn("unable to fetch user for new device notification")
+		return
+	}
+
+	locationInfo := location
+	if locationInfo == "" {
+		locationInfo = "Unknown location"
+	}
+
+	message := fmt.Sprintf(
+		"We detected a sign-in to your account from a new device or location.<br><br>"+
+			"<strong>IP Address:</strong> %s<br>"+
+			"<strong>Location:</strong> %s<br>"+
+			"<strong>Device:</strong> %s<br>"+
+			"<strong>Time:</strong> %s<br><br>"+
+			"If this was you, no further action is required. If you do not recognise this activity, "+
+			"please reset your password immediately.",
+		ipAddress,
+		locationInfo,
+		userAgent,
+		time.Now().UTC().Format(time.RFC1123),
+	)
+
+	if err := s.smtp.SendTemplatedEmail(
+		u.Username,
+		"New sign-in to your Flomation account",
+		"New device sign-in detected",
+		message,
+		"Review Account",
+		fmt.Sprintf("%v", s.config.Security.LoginRedirect),
+	); err != nil {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"user_id": userID,
+		}).Warn("unable to send new device notification email")
+	}
+}
+
+func deviceHash(userID, userAgent, ipAddress string) string {
+	h := sha256.New()
+	h.Write([]byte(userID))
+	h.Write([]byte(userAgent))
+	h.Write([]byte(ipAddress))
+	return hex.EncodeToString(h.Sum(nil))
 }

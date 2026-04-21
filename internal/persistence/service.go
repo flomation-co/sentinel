@@ -51,6 +51,10 @@ type Service struct {
 	stmtGetMFADeviceByUserID  *sqlx.NamedStmt
 	stmtEnableMFADevice       *sqlx.NamedStmt
 	stmtDeleteMFADevice       *sqlx.NamedStmt
+
+	stmtCheckKnownDevice  *sqlx.NamedStmt
+	stmtInsertKnownDevice *sqlx.NamedStmt
+	stmtUpdateKnownDevice *sqlx.NamedStmt
 }
 
 type baseConfiguration struct {
@@ -514,6 +518,37 @@ func (s *Service) configure() error {
 
 	s.stmtDeleteMFADevice, err = s.db.PrepareNamed(`
 		DELETE FROM mfa_device WHERE user_id = :user_id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtCheckKnownDevice, err = s.db.PrepareNamed(`
+		SELECT COUNT(*) FROM known_device
+		WHERE user_id = :user_id AND device_hash = digest(:device_hash, 'sha256')
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtInsertKnownDevice, err = s.db.PrepareNamed(`
+		INSERT INTO known_device (user_id, device_hash, ip_address, device, location)
+		VALUES (
+			:user_id,
+			digest(:device_hash, 'sha256'),
+			PGP_SYM_ENCRYPT(:ip_address, :key),
+			PGP_SYM_ENCRYPT(:device, :key),
+			PGP_SYM_ENCRYPT(:location, :key)
+		)
+		ON CONFLICT (user_id, device_hash) DO NOTHING
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtUpdateKnownDevice, err = s.db.PrepareNamed(`
+		UPDATE known_device SET last_seen_at = NOW()
+		WHERE user_id = :user_id AND device_hash = digest(:device_hash, 'sha256')
 	`)
 	if err != nil {
 		return err
