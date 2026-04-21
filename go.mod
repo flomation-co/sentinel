@@ -1,6 +1,6 @@
 module flomation.app/sentinel
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/flomation-co/gin-owasp-headers v0.0.0-20260109111326-c70a414e6954
@@ -12,6 +12,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/onsi/gomega v1.39.0
+	github.com/pquerna/otp v1.5.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
@@ -73,7 +74,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/pquerna/otp v1.5.0 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.57.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
