@@ -197,14 +197,14 @@ func (s *Service) SendTemplatedEmail(to string, subject string, header string, m
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, struct {
 		Header          string
-		Message         string
+		Message         template.HTML
 		ButtonText      string
 		ButtonURL       string
 		TransactionID   string
 		TransactionTime string
 	}{
 		Header:          header,
-		Message:         message,
+		Message:         template.HTML(message), // #nosec G203 -- caller-controlled content, not user input
 		ButtonText:      buttonText,
 		ButtonURL:       buttonUrl,
 		TransactionID:   transactionID,
