@@ -39,6 +39,19 @@ func corsPublic(c *gin.Context) {
 	c.Next()
 }
 
+func corsAuthenticated(c *gin.Context) {
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+	if c.Request.Method == "OPTIONS" {
+		c.AbortWithStatus(204)
+		return
+	}
+
+	c.Next()
+}
+
 func NewListener(config *config.Config, sec *security.Service, db *persistence.Service) (*Service, error) {
 	gin.SetMode(gin.ReleaseMode)
 
@@ -117,6 +130,8 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/api/user", Sentinel(s.config), s.getUser)
 	s.engine.PUT("/api/user", Sentinel(s.config), s.updateUser)
 	s.engine.GET("/api/account", Sentinel(s.config), s.getAccount)
+	s.engine.GET("/api/sessions", corsAuthenticated, Sentinel(s.config), s.getLoginHistory)
+	s.engine.OPTIONS("/api/sessions", corsAuthenticated)
 
 	s.engine.GET("/mfa", Sentinel(s.config), s.mfaManage)
 	s.engine.POST("/mfa/enrol", Sentinel(s.config), s.mfaEnrol)

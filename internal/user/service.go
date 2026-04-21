@@ -234,13 +234,18 @@ func (s *Service) CheckNewDevice(userID, ipAddress, userAgent, location string) 
 		"New device sign-in detected",
 		message,
 		"Review Account",
-		fmt.Sprintf("%v", s.config.Security.LoginRedirect),
+		fmt.Sprintf("%v/profile", s.config.Security.LoginRedirect),
 	); err != nil {
 		log.WithFields(log.Fields{
 			"error":   err,
 			"user_id": userID,
 		}).Warn("unable to send new device notification email")
 	}
+}
+
+// GetLoginHistory returns the login history for a user.
+func (s *Service) GetLoginHistory(userID string) ([]persistence.LoginHistoryEntry, error) {
+	return s.database.GetLoginHistory(userID)
 }
 
 func deviceHash(userID, userAgent, ipAddress string) string {
