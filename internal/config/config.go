@@ -89,6 +89,21 @@ type MetricsConfig struct {
 	AllowedIPs []string `json:"allowed_ips"`
 }
 
+// SSOProviderConfig holds configuration for an SSO provider.
+type SSOProviderConfig struct {
+	Enabled        bool     `json:"enabled"`
+	ClientID       string   `json:"client_id" env:"SSO_CLIENT_ID"`
+	ClientSecret   string   `json:"client_secret" env:"SSO_CLIENT_SECRET"`
+	TenantID       string   `json:"tenant_id,omitempty"`          // Microsoft only
+	AllowedDomains []string `json:"allowed_domains,omitempty"`    // Restrict to specific email domains
+}
+
+// SSOConfig holds the SSO provider configurations.
+type SSOConfig struct {
+	Google    *SSOProviderConfig `json:"google,omitempty"`
+	Microsoft *SSOProviderConfig `json:"microsoft,omitempty"`
+}
+
 type Config struct {
 	Listener     ListenerConfig     `json:"listener"`
 	Database     DatabaseConfig     `json:"database"`
@@ -101,6 +116,7 @@ type Config struct {
 	GitHubOAuth    *OAuthProviderConfig `json:"github_oauth,omitempty"`
 	LinkedInOAuth  *OAuthProviderConfig `json:"linkedin_oauth,omitempty"`
 	Metrics        MetricsConfig        `json:"metrics"`
+	SSO            *SSOConfig           `json:"sso,omitempty"`
 }
 
 func LoadConfig(path string) (*Config, error) {

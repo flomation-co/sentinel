@@ -174,6 +174,43 @@ func (s *Service) UpdateDisplayName(id string, displayName string) error {
 	return s.database.UpdateDisplayName(id, displayName)
 }
 
+// RegisterUserSSO creates a user account without a password (SSO-only login).
+func (s *Service) RegisterUserSSO(email, displayName string) (*persistence.User, error) {
+	u, err := s.database.RegisterUser(email)
+	if err != nil {
+		return nil, err
+	}
+
+	// Mark the user as verified (SSO provider confirmed their email)
+	if err := s.database.Verify(u.ID); err != nil {
+		log.WithError(err).Warn("failed to verify SSO user")
+	}
+
+	// Set display name if provided
+	if displayName != "" {
+		if err := s.database.UpdateDisplayName(u.ID, displayName); err != nil {
+			log.WithError(err).Warn("failed to set SSO user display name")
+		}
+	}
+
+	return u, nil
+}
+
+// FindSSOAccount looks up an SSO account by provider and provider user ID.
+func (s *Service) FindSSOAccount(provider, providerUserID string) (*persistence.SSOAccount, error) {
+	return s.database.FindSSOAccount(provider, providerUserID)
+}
+
+// LinkSSOAccount creates a link between a user and an SSO provider account.
+func (s *Service) LinkSSOAccount(userID, provider, providerUserID, email string) error {
+	return s.database.CreateSSOAccount(userID, provider, providerUserID, email)
+}
+
+// GetSSOAccounts returns all SSO accounts linked to a user.
+func (s *Service) GetSSOAccounts(userID string) ([]persistence.SSOAccount, error) {
+	return s.database.GetSSOAccountsForUser(userID)
+}
+
 // CheckNewDevice checks if the user has logged in from this device before.
 // If not, sends a notification email and registers the device. If known,
 // updates the last_seen_at timestamp.
