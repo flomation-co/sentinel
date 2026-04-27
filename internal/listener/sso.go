@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"flomation.app/sentinel/internal/session"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -270,7 +270,11 @@ func (s *Service) ssoCallback(c *gin.Context) {
 		redirectURL = *s.config.Security.LoginRedirect
 	}
 	if savedRedirect, err := c.Cookie("flomation-sso-redirect"); err == nil && savedRedirect != "" {
-		redirectURL = savedRedirect
+		if isSameOrigin(savedRedirect, s.config.Listener.URL) {
+			redirectURL = savedRedirect
+		} else {
+			log.WithField("redirect", savedRedirect).Warn("SSO redirect cookie rejected — not same-origin")
+		}
 	}
 
 	log.WithFields(log.Fields{
@@ -295,23 +299,10 @@ func (s *Service) extractUserInfo(provider string, token *oauth2.Token, cfg *oau
 }
 
 func (s *Service) extractGoogleUserInfo(token *oauth2.Token, cfg *oauth2.Config) (string, string, string, error) {
-	// Try ID token first (faster, no extra API call)
-	if idTokenStr, ok := token.Extra("id_token").(string); ok && idTokenStr != "" {
-		// Parse without verification (we trust Google issued it via the OAuth flow)
-		parser := jwt.NewParser(jwt.WithoutClaimsValidation())
-		claims := jwt.MapClaims{}
-		_, _, err := parser.ParseUnverified(idTokenStr, claims)
-		if err == nil {
-			email, _ := claims["email"].(string)
-			sub, _ := claims["sub"].(string)
-			name, _ := claims["name"].(string)
-			if email != "" && sub != "" {
-				return email, sub, name, nil
-			}
-		}
-	}
-
-	// Fallback: call userinfo endpoint
+	// Always use the userinfo endpoint — it makes an authenticated HTTPS call
+	// to Google and returns verified claims. The ID token fast-path was removed
+	// because ParseUnverified skips signature verification, which would allow
+	// a crafted JWT to impersonate any user.
 	client := cfg.Client(context.Background(), token)
 	resp, err := client.Get(googleUserInfoURL)
 	if err != nil {
@@ -389,5 +380,19 @@ func generateState() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
+}
+
+// isSameOrigin checks that candidate has the same scheme and host as base,
+// preventing open redirect attacks via user-controlled cookies.
+func isSameOrigin(candidate, base string) bool {
+	c, err := url.Parse(candidate)
+	if err != nil {
+		return false
+	}
+	b, err := url.Parse(base)
+	if err != nil {
+		return false
+	}
+	return c.Scheme == b.Scheme && c.Host == b.Host
 }
 
