@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -23,7 +24,7 @@ const (
 	providerMicrosoft = "microsoft"
 
 	microsoftAuthURL  = "https://login.microsoftonline.com/%s/oauth2/v2.0/authorize"
-	microsoftTokenURL = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+	microsoftTokenURL = "https://login.microsoftonline.com/%s/oauth2/v2.0/token" // #nosec G101 -- URL template, not credentials
 	googleUserInfoURL = "https://www.googleapis.com/oauth2/v3/userinfo"
 	msGraphMeURL      = "https://graph.microsoft.com/v1.0/me"
 )
@@ -311,7 +312,7 @@ func (s *Service) extractGoogleUserInfo(token *oauth2.Token, cfg *oauth2.Config)
 	}
 
 	// Fallback: call userinfo endpoint
-	client := cfg.Client(nil, token)
+	client := cfg.Client(context.Background(), token)
 	resp, err := client.Get(googleUserInfoURL)
 	if err != nil {
 		return "", "", "", fmt.Errorf("google userinfo request failed: %w", err)
@@ -390,8 +391,3 @@ func generateState() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func (s *Service) checkNewDeviceFromContextSSO(c *gin.Context, provider string) func(string) {
-	return func(userID string) {
-		s.checkNewDeviceFromContext(c, userID)
-	}
-}
