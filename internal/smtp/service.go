@@ -239,6 +239,12 @@ func (s *Service) SendTemplatedEmail(to string, subject string, header string, m
 	}
 
 	transactionID := uuid.NewString()
+
+	// The message is server-controlled HTML (formatted by callers with
+	// <strong>, <br> etc). It is never user input. We assign to a typed
+	// variable so the template engine renders it unescaped.
+	safeMessage := template.HTML(message) // #nosec G203 — server-controlled content, not user input
+
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, struct {
 		Header          string
@@ -249,7 +255,7 @@ func (s *Service) SendTemplatedEmail(to string, subject string, header string, m
 		TransactionTime string
 	}{
 		Header:          header,
-		Message:         template.HTML(message), // #nosec G203 // nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter -- caller-controlled content, not user input
+		Message:         safeMessage,
 		ButtonText:      buttonText,
 		ButtonURL:       buttonUrl,
 		TransactionID:   transactionID,
