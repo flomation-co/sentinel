@@ -249,7 +249,7 @@ func (s *Service) SendTemplatedEmail(to string, subject string, header string, m
 		TransactionTime string
 	}{
 		Header:          header,
-		Message:         template.HTML(message), // #nosec G203 -- caller-controlled content, not user input
+		Message:         template.HTML(message), // #nosec G203 // nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter -- caller-controlled content, not user input
 		ButtonText:      buttonText,
 		ButtonURL:       buttonUrl,
 		TransactionID:   transactionID,
