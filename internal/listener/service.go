@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"flomation.app/sentinel/internal/mfa"
+	appmetrics "flomation.app/sentinel/internal/metrics"
 	"flomation.app/sentinel/internal/session"
 	"flomation.app/sentinel/internal/user"
 
@@ -14,6 +15,7 @@ import (
 	"flomation.app/sentinel/internal/version"
 	owasp "github.com/flomation-co/gin-owasp-headers"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -70,6 +72,11 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 		StrictTransportSecurity(owasp.DefaultMaxAge, true, true)
 
 	s.engine.Use(m.Middleware())
+
+	if config.Metrics.Enabled {
+		s.engine.Use(appmetrics.RequestMetricsMiddleware())
+		s.engine.GET("/metrics", appmetrics.IPRestrictionMiddleware(config.Metrics.AllowedIPs), gin.WrapH(promhttp.Handler()))
+	}
 
 	s.engine.GET("/", func(c *gin.Context) {
 		target := "/authenticate"

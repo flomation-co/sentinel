@@ -62,6 +62,10 @@ type baseConfiguration struct {
 	InstanceID string `json:"instance_id"`
 }
 
+// DB returns the underlying sqlx connection pool for use by metrics collectors
+// and other infrastructure code that needs direct database access.
+func (s *Service) DB() *sqlx.DB { return s.db }
+
 func NewService(config *config.Config) (*Service, error) {
 	if config.Database.EncryptionKey == "" {
 		return nil, errors.New("database encryption key not set")

@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	"flomation.app/sentinel/internal/config"
 	"flomation.app/sentinel/internal/listener"
+	"flomation.app/sentinel/internal/metrics"
 	"flomation.app/sentinel/internal/persistence"
 	"flomation.app/sentinel/internal/security"
 	"flomation.app/sentinel/internal/utils"
@@ -67,6 +69,10 @@ func main() {
 		}
 
 		cfg.Security.Secret = authSecret
+	}
+
+	if cfg.Metrics.Enabled {
+		metrics.StartCollector(db.DB(), 60*time.Second)
 	}
 
 	sec := security.NewService(cfg)
