@@ -3,6 +3,7 @@ package listener
 import (
 	"net/http"
 
+	appmetrics "flomation.app/sentinel/internal/metrics"
 	"flomation.app/sentinel/internal/session"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -39,6 +40,7 @@ func (s *Service) issueToken(c *gin.Context) {
 	}
 
 	if u == nil {
+		appmetrics.LoginFailuresTotal.Inc()
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -56,12 +58,15 @@ func (s *Service) issueToken(c *gin.Context) {
 
 		valid, _ := s.mfa.ValidateCode(u.ID, *request.MFACode)
 		if !valid {
+			appmetrics.MFAVerificationsTotal.WithLabelValues("failure").Inc()
+			appmetrics.LoginFailuresTotal.Inc()
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":   "mfa_invalid",
 				"message": "Invalid MFA code",
 			})
 			return
 		}
+		appmetrics.MFAVerificationsTotal.WithLabelValues("success").Inc()
 	}
 
 	ip := c.ClientIP()
@@ -94,6 +99,8 @@ func (s *Service) issueToken(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+
+	appmetrics.LoginsTotal.Inc()
 
 	c.JSON(http.StatusOK, TokenResponse{
 		Session:     sess.ID,

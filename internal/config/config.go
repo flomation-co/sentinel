@@ -69,12 +69,19 @@ func (l *ListenerConfig) ListenAddress() string {
 	return fmt.Sprintf("%v:%v", l.Address, l.Port)
 }
 
+// MetricsConfig controls the Prometheus /metrics endpoint.
+type MetricsConfig struct {
+	Enabled    bool     `json:"enabled" env:"METRICS_ENABLED" arg:"metrics-enabled"`
+	AllowedIPs []string `json:"allowed_ips"`
+}
+
 type Config struct {
 	Listener     ListenerConfig     `json:"listener"`
 	Database     DatabaseConfig     `json:"database"`
 	Security     SecurityConfig     `json:"security"`
 	Notification NotificationConfig `json:"notification"`
 	GeoIPConfig  GeoIPConfig        `json:"geo"`
+	Metrics      MetricsConfig      `json:"metrics"`
 }
 
 func LoadConfig(path string) (*Config, error) {
