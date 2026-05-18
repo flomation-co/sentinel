@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta content="Flomation Limited" name="author" />
     <meta name="msapplication-TileColor" content="#5C2482">
-    <meta name="theme-color" content="#0d0912">
+    <meta name="theme-color" content="#161019">
 
     <meta content="Flomation - Automate your world" property="og:title"/>
     <meta content="" property="og:description"/>
@@ -36,7 +36,7 @@
 
     <style>
         :root {
-            --background-colour: #0d0912;
+            --background-colour: #161019;
             --primary-foreground: #460070;
             --primary-background: #33263a;
             --primary-background-muted: #18121c;
@@ -45,11 +45,14 @@
             --secondary-font-colour: #ae9fb9;
             --secondary-action-colour: #0a0;
             --highlight-colour: #48abe0;
-            --card-bg: linear-gradient(180deg, rgba(70, 0, 112, 0.15) 0%, rgba(30, 20, 40, 0.9) 100%);
-            --card-border: rgba(174, 159, 185, 0.2);
-            --input-bg: rgba(24, 18, 28, 0.8);
-            --input-border: rgba(174, 159, 185, 0.15);
-            --input-focus-border: rgba(70, 0, 112, 0.6);
+            --card-bg: rgba(19, 19, 19, 0.85);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --input-bg: #17202e;
+            --input-border: rgba(255, 255, 255, 0.1);
+            --input-focus-border: var(--highlight-colour);
+            --input-focus-glow: rgba(72, 171, 224, 0.25);
+            --btn-primary-bg: var(--secondary-background);
+            --btn-primary-hover: #00c4b4;
         }
 
         * {
@@ -71,9 +74,21 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             font-size: 0.95em;
             color: var(--primary-font-colour);
-            background: radial-gradient(ellipse at top left, #1a0a24 0%, #0d0912 50%, #060409 100%);
+            background: radial-gradient(at top left, var(--background-colour), var(--primary-background));
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+        }
+
+        /* Dot grid background — matches editor canvas */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .authenticate_container_full {
@@ -82,7 +97,7 @@
 
         .authenticate_container_small {
             width: 100%;
-            max-width: 460px;
+            max-width: 440px;
         }
 
         .authenticate_container {
@@ -94,7 +109,22 @@
             overflow: hidden;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            box-shadow: 0 24px 80px rgba(70, 0, 112, 0.3), 0 0 0 1px rgba(70, 0, 112, 0.1);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(70, 0, 112, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 1;
+            animation: floatIn 0.2s ease-out;
+        }
+
+        @keyframes floatIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -48%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
         }
 
         .identity-container {
@@ -104,7 +134,7 @@
         .authenticate_header {
             text-align: center;
             padding: 32px 32px 24px;
-            border-bottom: 1px solid rgba(174, 159, 185, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .authenticate_content {
@@ -115,9 +145,9 @@
         }
 
         .button {
-            padding: 14px 24px;
-            border-radius: 10px;
-            font-size: 15px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             border: 0;
@@ -129,66 +159,68 @@
             appearance: none;
             width: 100%;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             letter-spacing: 0.01em;
         }
 
         .button-continue {
-            background: linear-gradient(135deg, #460070, #5a0090);
+            background: var(--btn-primary-bg);
             color: #fff;
-            box-shadow: 0 4px 16px rgba(70, 0, 112, 0.4);
+            box-shadow: none;
         }
 
         .button-continue:hover {
-            background: linear-gradient(135deg, #520080, #6a00a8);
-            box-shadow: 0 6px 24px rgba(70, 0, 112, 0.5);
+            background: var(--btn-primary-hover);
+            box-shadow: 0 4px 16px rgba(0, 170, 156, 0.3);
             transform: translateY(-1px);
         }
 
         .button-continue:active {
             transform: translateY(0);
+            box-shadow: none;
         }
 
         .button-back {
-            background: transparent;
+            background: rgba(255, 255, 255, 0.05);
             color: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(174, 159, 185, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .button-back:hover {
-            background: rgba(174, 159, 185, 0.08);
+            background: rgba(255, 255, 255, 0.08);
             color: rgba(255, 255, 255, 0.8);
+            border-color: rgba(255, 255, 255, 0.1);
         }
 
         input[type="email"],
         input[type="password"],
         input[type="text"]:not(.input_mfa_single) {
             width: 100%;
-            padding: 14px 16px;
+            padding: 12px 14px;
             background-color: var(--input-bg);
             color: var(--primary-font-colour);
             outline: none;
             border: 1px solid var(--input-border);
-            border-radius: 10px;
+            border-radius: 6px;
             box-sizing: border-box;
-            margin-top: 16px;
-            margin-bottom: 16px;
+            margin-top: 12px;
+            margin-bottom: 12px;
             font-family: 'Inter', sans-serif;
             font-size: 14px;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
         input[type="email"]:focus,
         input[type="password"]:focus,
         input[type="text"]:not(.input_mfa_single):focus {
             border-color: var(--input-focus-border);
-            box-shadow: 0 0 0 3px rgba(70, 0, 112, 0.2);
+            box-shadow: 0 0 10px 3px var(--input-focus-glow);
         }
 
         input[type="email"]::placeholder,
         input[type="password"]::placeholder,
         input[type="text"]::placeholder {
-            color: rgba(174, 159, 185, 0.5);
+            color: rgba(255, 255, 255, 0.3);
         }
 
         input[type="hidden"] {
@@ -197,9 +229,9 @@
 
         input[type="submit"],
         input[type="button"] {
-            padding: 14px 24px;
-            border-radius: 10px;
-            font-size: 15px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             border: 0;
@@ -211,7 +243,7 @@
             appearance: none;
             width: 100%;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
         }
 
         .input_bg {
@@ -221,11 +253,11 @@
         .input_mfa {
             height: auto;
             aspect-ratio: 1;
-            border: 2px solid rgba(70, 0, 112, 0.4);
+            border: 1px solid var(--input-border);
             margin: 5px;
             text-align: center;
             font-size: 3em;
-            border-radius: 8px;
+            border-radius: 6px;
         }
 
         .mfa_container {
@@ -238,24 +270,24 @@
         .input_mfa_single {
             width: 100%;
             max-width: 220px;
-            height: 56px;
+            height: 52px;
             text-align: center;
             font-size: 2em;
             font-family: 'Courier New', monospace;
             letter-spacing: 0.4em;
-            border: 2px solid rgba(70, 0, 112, 0.4);
-            border-radius: 10px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
             margin: 0;
             background-color: var(--input-bg);
             color: var(--primary-font-colour);
             outline: none;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
             padding: 10px;
         }
 
         .input_mfa_single:focus {
             border-color: var(--input-focus-border);
-            box-shadow: 0 0 0 3px rgba(70, 0, 112, 0.2);
+            box-shadow: 0 0 10px 3px var(--input-focus-glow);
         }
 
         .center-image {
@@ -263,7 +295,7 @@
         }
 
         .center-image img {
-            border-radius: 12px;
+            border-radius: 8px;
             margin-top: 8px;
         }
 
@@ -271,19 +303,19 @@
             margin-top: 15px;
             margin-bottom: 15px;
             border: none;
-            border-top: 1px solid rgba(174, 159, 185, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .error {
-            color: #f87171;
+            color: #ef4444;
             font-weight: 600;
             font-size: 13px;
             margin-top: 8px;
             margin-bottom: 12px;
             padding: 10px 14px;
-            background: rgba(248, 113, 113, 0.08);
-            border-radius: 8px;
-            border: 1px solid rgba(248, 113, 113, 0.15);
+            background: rgba(239, 68, 68, 0.08);
+            border-radius: 6px;
+            border: 1px solid rgba(239, 68, 68, 0.15);
         }
 
         .password-reset-link {
@@ -291,12 +323,18 @@
             text-decoration: none;
             cursor: pointer;
             font-size: 13px;
-            transition: color 0.2s ease;
+            transition: color 0.15s ease;
         }
 
         .password-reset-link:hover {
             color: var(--secondary-background);
             text-decoration: underline;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 4px;
+            font-size: 14px;
         }
 
         .invalid {
@@ -313,7 +351,7 @@
             display: inline-block;
             position: absolute;
             left: 0;
-            color: rgba(248, 113, 113, 0.7);
+            color: rgba(239, 68, 68, 0.7);
             font-size: 12px;
         }
 
@@ -331,7 +369,7 @@
             display: inline-block;
             position: absolute;
             left: 0;
-            color: #4ade80;
+            color: #22c55e;
             font-size: 12px;
         }
 
@@ -342,14 +380,22 @@
 
         @media only screen and (max-width: 576px) {
             .authenticate_container_small {
-                width: calc(100% - 40px);
+                width: calc(100% - 32px);
                 max-width: none;
+            }
+
+            .authenticate_content {
+                padding: 24px;
+            }
+
+            .authenticate_header {
+                padding: 24px 24px 20px;
             }
         }
 
         .footer-links {
-            padding: 16px 32px;
-            border-top: 1px solid rgba(174, 159, 185, 0.1);
+            padding: 14px 32px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
             text-align: center;
         }
 
@@ -370,8 +416,8 @@
             color: rgba(255, 255, 255, 0.3);
             display: inline-block;
             text-decoration: none;
-            font-size: 12px;
-            transition: color 0.2s ease;
+            font-size: 11px;
+            transition: color 0.15s ease;
         }
 
         li > a:hover {
@@ -392,12 +438,12 @@
 
         .continue_creating {
             margin-bottom: 16px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.5);
             line-height: 1.6;
         }
 
         p {
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.5);
             line-height: 1.6;
         }
     </style>
