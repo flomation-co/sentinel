@@ -15,6 +15,7 @@ stages:
   - docker
   - test-suite
   - Development
+  - Sandbox
   - Production
 
 variables:
@@ -428,6 +429,18 @@ test-suite:
   needs:
     - inject-metadata
     - compile
+
+Deploy to Sandbox:
+  stage: Sandbox
+  variables:
+    OVH_HOST: "51.255.153.4"
+    PACKAGE: "flomation-${NAME}"
+    SERVICE: "flomation-${NAME}"
+  only:
+    - main
+  script:
+    - mkdir -p ~/.ssh && echo "${OVH_DEPLOY_KEY}" > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+    - ssh -o StrictHostKeyChecking=no ubuntu@${OVH_HOST} "sudo apt update && sudo apt install -y ${PACKAGE} && sudo systemctl restart ${SERVICE}"
 
 sync-to-github:
   extends: .sync-to-github-template
