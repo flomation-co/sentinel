@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/smtp"
 	"strings"
+	"sync"
 	"time"
 
 	"flomation.app/sentinel/internal/assets"
@@ -20,6 +21,7 @@ type Service struct {
 	config  *config.Config
 	enabled bool
 
+	mu     sync.Mutex
 	client *smtp.Client
 }
 
@@ -47,9 +49,15 @@ func (s *Service) clientActive() bool {
 	return true
 }
 
-func (s *Service) configureBackgroundClient() error {
+func (s *Service) connect() error {
+	// Close any existing connection.
+	if s.client != nil {
+		_ = s.client.Quit()
+		s.client = nil
+	}
+
 	host := s.config.Notification.SMTP.Host
-	serverName := fmt.Sprintf("%v:%v", host, 587)
+	serverName := fmt.Sprintf("%v:%v", host, s.config.Notification.SMTP.Port)
 
 	auth := smtp.PlainAuth("", s.config.Notification.SMTP.Username, s.config.Notification.SMTP.Password, host)
 
@@ -66,18 +74,20 @@ func (s *Service) configureBackgroundClient() error {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to say HELO")
+		_ = client.Close()
 		return err
 	}
 
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		cfg := &tls.Config{
 			ServerName: host,
-			MinVersion: tls.VersionTLS13,
+			MinVersion: tls.VersionTLS12,
 		}
 		if err = client.StartTLS(cfg); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to start tls")
+			_ = client.Close()
 			return err
 		}
 	}
@@ -86,24 +96,39 @@ func (s *Service) configureBackgroundClient() error {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to auth")
+		_ = client.Close()
 		return err
 	}
 
-	go func(c *smtp.Client) {
-		if err := c.Noop(); err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).Error("smtp client has reset")
-			_ = c.Close()
-			return
-		}
-
-		time.Sleep(time.Second * 15)
-	}(client)
-
 	s.client = client
-
 	return nil
+}
+
+// ensureClient returns a usable SMTP client, reconnecting if necessary.
+func (s *Service) ensureClient() (*smtp.Client, error) {
+	if s.clientActive() {
+		return s.client, nil
+	}
+	if err := s.connect(); err != nil {
+		return nil, err
+	}
+	return s.client, nil
+}
+
+// envelopeSender extracts the bare email address from the configured
+// SendFrom field (e.g. "Flomation <noreply@example.com>" → "noreply@example.com").
+// SES requires the MAIL FROM to be a verified email address, not the
+// SMTP username (which is an IAM access key).
+func (s *Service) envelopeSender() string {
+	from := s.config.Notification.SendFrom
+	if idx := strings.Index(from, "<"); idx >= 0 {
+		from = strings.TrimSuffix(from[idx+1:], ">")
+	}
+	from = strings.TrimSpace(from)
+	if from != "" {
+		return from
+	}
+	return s.config.Notification.SMTP.Username
 }
 
 func (s *Service) sendSMTPEmail(recipients []string, subject string, body string) error {
@@ -113,35 +138,43 @@ func (s *Service) sendSMTPEmail(recipients []string, subject string, body string
 		}
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	mailFrom := s.envelopeSender()
+
 	for _, addr := range recipients {
 		recipient := strings.TrimSuffix(strings.TrimPrefix(addr, " "), " ")
 		msg := fmt.Sprintf("From: %v\nTo: %v\nSubject: %v\nMIME-Version: 1.0\nContent-Type: text/html; charset=\"UTF-8\";\n\n%v\n\n", s.config.Notification.SendFrom, recipient, subject, body)
 
-		firstAttempt := true
-
-		for i := 0; i < 10; i++ {
-			if !firstAttempt {
-				time.Sleep(time.Millisecond * time.Duration(1000*i))
+		var lastErr error
+		for attempt := 0; attempt < 3; attempt++ {
+			if attempt > 0 {
+				time.Sleep(time.Second * time.Duration(attempt))
 			}
 
-			firstAttempt = false
-
-			if !s.clientActive() {
-				if err := s.configureBackgroundClient(); err != nil {
-					log.WithFields(log.Fields{
-						"error": err,
-					}).Error("unable to configure background client")
-					return err
-				}
-			}
-
-			client := s.client
-
-			if err := client.Mail(s.config.Notification.SMTP.Username); err != nil {
+			client, err := s.ensureClient()
+			if err != nil {
 				log.WithFields(log.Fields{
-					"from":  s.config.Notification.SendFrom,
-					"error": err,
-				}).Error("unable to set from field")
+					"error":   err,
+					"attempt": attempt + 1,
+				}).Error("unable to get SMTP client")
+				lastErr = err
+				continue
+			}
+
+			if err := client.Mail(mailFrom); err != nil {
+				log.WithFields(log.Fields{
+					"from":    mailFrom,
+					"error":   err,
+					"attempt": attempt + 1,
+				}).Warn("MAIL FROM failed, reconnecting")
+				// Reset or reconnect — the connection is in a dirty state.
+				if resetErr := client.Reset(); resetErr != nil {
+					_ = client.Quit()
+					s.client = nil
+				}
+				lastErr = err
 				continue
 			}
 
@@ -149,6 +182,8 @@ func (s *Service) sendSMTPEmail(recipients []string, subject string, body string
 				log.WithFields(log.Fields{
 					"error": err,
 				}).Error("unable to set to field")
+				_ = client.Reset()
+				lastErr = err
 				continue
 			}
 
@@ -157,14 +192,17 @@ func (s *Service) sendSMTPEmail(recipients []string, subject string, body string
 				log.WithFields(log.Fields{
 					"error": err,
 				}).Error("unable to get data writer")
+				_ = client.Reset()
+				lastErr = err
 				continue
 			}
 
-			_, err = w.Write([]byte(msg))
-			if err != nil {
+			if _, err = w.Write([]byte(msg)); err != nil {
 				log.WithFields(log.Fields{
 					"error": err,
 				}).Error("unable to write message")
+				_ = client.Reset()
+				lastErr = err
 				continue
 			}
 
@@ -172,10 +210,17 @@ func (s *Service) sendSMTPEmail(recipients []string, subject string, body string
 				log.WithFields(log.Fields{
 					"error": err,
 				}).Error("unable to close writer")
+				_ = client.Reset()
+				lastErr = err
 				continue
 			}
 
+			lastErr = nil
 			break
+		}
+
+		if lastErr != nil {
+			return fmt.Errorf("failed to send to %s after 3 attempts: %w", recipient, lastErr)
 		}
 	}
 
