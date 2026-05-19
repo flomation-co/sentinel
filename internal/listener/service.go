@@ -93,6 +93,10 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/password", s.resetPassword)
 	s.engine.POST("/password", s.setPassword)
 
+	// Google OAuth routes
+	s.engine.GET("/auth/google/login", s.googleLogin)
+	s.engine.GET("/auth/google/callback", s.googleCallback)
+
 	s.engine.NoRoute(s.staticAssets)
 
 	s.engine.GET("/version", corsPublic, func(c *gin.Context) {

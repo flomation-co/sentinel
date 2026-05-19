@@ -69,6 +69,13 @@ func (l *ListenerConfig) ListenAddress() string {
 	return fmt.Sprintf("%v:%v", l.Address, l.Port)
 }
 
+// GoogleOAuthConfig holds credentials for "Sign in with Google".
+type GoogleOAuthConfig struct {
+	ClientID     string `json:"client_id" env:"GOOGLE_OAUTH_CLIENT_ID"`
+	ClientSecret string `json:"client_secret" env:"GOOGLE_OAUTH_CLIENT_SECRET"`
+	RedirectURL  string `json:"redirect_url" env:"GOOGLE_OAUTH_REDIRECT_URL"`
+}
+
 // MetricsConfig controls the Prometheus /metrics endpoint.
 type MetricsConfig struct {
 	Enabled    bool     `json:"enabled" env:"METRICS_ENABLED" arg:"metrics-enabled"`
@@ -81,6 +88,7 @@ type Config struct {
 	Security     SecurityConfig     `json:"security"`
 	Notification NotificationConfig `json:"notification"`
 	GeoIPConfig  GeoIPConfig        `json:"geo"`
+	GoogleOAuth  *GoogleOAuthConfig `json:"google_oauth,omitempty"`
 	Metrics      MetricsConfig      `json:"metrics"`
 }
 

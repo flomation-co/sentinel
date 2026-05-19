@@ -41,6 +41,9 @@ func New(config *config.Config, database *persistence.Service) *Service {
 	}
 }
 
+// Database exposes the persistence layer for SSO account operations.
+func (s *Service) Database() *persistence.Service { return s.database }
+
 func (s *Service) RegisterUser(username string) (*persistence.User, error) {
 	u, err := s.database.RegisterUser(username)
 	if err != nil {
