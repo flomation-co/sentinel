@@ -337,6 +337,64 @@
             font-size: 14px;
         }
 
+        .oauth-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0 8px;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .oauth-divider::before,
+        .oauth-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 11px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.85);
+            text-decoration: none;
+            box-sizing: border-box;
+            transition: all 0.15s ease;
+            letter-spacing: 0.01em;
+        }
+
+        .google-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .google-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .google-btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
         .invalid {
             color: rgba(255, 255, 255, 0.4);
             font-size: 13px;
