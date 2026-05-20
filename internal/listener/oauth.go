@@ -51,13 +51,13 @@ func fetchMicrosoftProfile(ctx context.Context, _ *oauth2.Config, token *oauth2.
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Microsoft Graph request: %w", err)
+		return nil, fmt.Errorf("microsoft graph request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Microsoft Graph %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("microsoft graph %d: %s", resp.StatusCode, string(body))
 	}
 
 	var profile struct {
