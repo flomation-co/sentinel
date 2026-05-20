@@ -48,9 +48,8 @@ func (s *Service) BeginRegistration(user *persistence.User) (*protocol.Credentia
 		webauthn.WithExclusions(u.credentialDescriptors()),
 		webauthn.WithResidentKeyRequirement(protocol.ResidentKeyRequirementPreferred),
 		webauthn.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
-			AuthenticatorAttachment: protocol.CrossPlatform,
-			ResidentKey:             protocol.ResidentKeyRequirementPreferred,
-			UserVerification:        protocol.VerificationPreferred,
+			ResidentKey:      protocol.ResidentKeyRequirementPreferred,
+			UserVerification: protocol.VerificationPreferred,
 		}),
 	)
 	if err != nil {

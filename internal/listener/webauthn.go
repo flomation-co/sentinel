@@ -24,7 +24,7 @@ import (
 // ── Registration (authenticated) ─────────────────────────────────────
 
 func (s *Service) webauthnRegisterBegin(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get(FlomationUserID)
 	user, err := s.user.Database().GetUserByID(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
@@ -47,7 +47,7 @@ func (s *Service) webauthnRegisterBegin(c *gin.Context) {
 }
 
 func (s *Service) webauthnRegisterFinish(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get(FlomationUserID)
 	user, err := s.user.Database().GetUserByID(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
@@ -268,7 +268,7 @@ func (s *Service) webauthnLoginFinish(c *gin.Context) {
 // ── Management page (authenticated) ──────────────────────────────────
 
 func (s *Service) passkeyManage(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get(FlomationUserID)
 
 	creds, err := s.user.Database().GetWebAuthnCredentialsByUserID(userID.(string))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -317,7 +317,7 @@ func (s *Service) passkeyManage(c *gin.Context) {
 }
 
 func (s *Service) webauthnDeleteCredential(c *gin.Context) {
-	userID, _ := c.Get("userID")
+	userID, _ := c.Get(FlomationUserID)
 	credID := c.Param("id")
 
 	if err := s.user.Database().DeleteWebAuthnCredential(credID, userID.(string)); err != nil {
