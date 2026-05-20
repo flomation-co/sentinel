@@ -104,9 +104,9 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/password", s.resetPassword)
 	s.engine.POST("/password", s.setPassword)
 
-	// Google OAuth routes
-	s.engine.GET("/auth/google/login", s.googleLogin)
-	s.engine.GET("/auth/google/callback", s.googleCallback)
+	// OAuth SSO routes (Google, Microsoft, GitHub, LinkedIn)
+	s.engine.GET("/auth/:provider/login", s.oauthLogin)
+	s.engine.GET("/auth/:provider/callback", s.oauthCallback)
 
 	s.engine.NoRoute(s.staticAssets)
 
