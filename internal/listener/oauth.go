@@ -208,7 +208,7 @@ var oauthProviders = map[string]oauthProvider{
 				ClientSecret: cfg.ClientSecret,
 				RedirectURL:  cfg.RedirectURL,
 				Scopes:       []string{"openid", "email", "profile", "User.Read"},
-				Endpoint: oauth2.Endpoint{
+				Endpoint: oauth2.Endpoint{ // #nosec G101 -- OAuth endpoint URLs, not credentials
 					AuthURL:  "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
 					TokenURL: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
 				},
@@ -241,7 +241,7 @@ var oauthProviders = map[string]oauthProvider{
 				ClientSecret: cfg.ClientSecret,
 				RedirectURL:  cfg.RedirectURL,
 				Scopes:       []string{"openid", "profile", "email"},
-				Endpoint: oauth2.Endpoint{
+				Endpoint: oauth2.Endpoint{ // #nosec G101 -- OAuth endpoint URLs, not credentials
 					AuthURL:  "https://www.linkedin.com/oauth/v2/authorization",
 					TokenURL: "https://www.linkedin.com/oauth/v2/accessToken",
 				},
