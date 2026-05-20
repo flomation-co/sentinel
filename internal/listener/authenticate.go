@@ -37,6 +37,7 @@ const (
 	fragmentEnterEmailAddress         = "email_address"
 	fragmentRegister                  = "register"
 	fragmentPassword                  = "password"
+	fragmentEnterPasskey              = "enter_passkey"
 	fragmentPasswordError             = "password_error"
 	fragmentSubmitPassword            = "submit_password"
 	fragmentSubmitMFA                 = "submit_mfa"
@@ -347,8 +348,25 @@ func (s *Service) authenticate(c *gin.Context) {
 				return
 			}
 
-			fragment = fragmentPassword
+			// If the user has registered passkeys and WebAuthn is enabled, show passkey prompt.
+			if s.passkey != nil {
+				hasPasskeys, _ := s.user.Database().HasWebAuthnCredentials(u.ID)
+				if hasPasskeys {
+					fragment = fragmentEnterPasskey
+				} else {
+					fragment = fragmentPassword
+				}
+			} else {
+				fragment = fragmentPassword
+			}
 		}
+	case "use_password":
+		// User clicked "Use password instead" from the passkey prompt.
+		fragment = fragmentPassword
+	case fragmentEnterPasskey:
+		// Passkey JS handles authentication via API — this form submission
+		// is a no-op (the fragment auto-triggers JS). Show passkey again.
+		fragment = fragmentEnterPasskey
 	case fragmentRegister:
 		u, err := s.user.RegisterUser(email)
 		if err != nil {

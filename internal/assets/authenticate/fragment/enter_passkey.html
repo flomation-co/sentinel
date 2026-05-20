@@ -1,0 +1,131 @@
+<div class="identity-container">
+    <input type="hidden" name="form_state" id="form_state" value="enter_passkey"/>
+
+    <div style="text-align:center; margin: 10px 0 20px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,170,156,0.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <circle cx="12" cy="16" r="1"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+    </div>
+
+    <div class="subtitle" style="text-align:center; margin-bottom: 16px;">
+        Use your passkey to sign in
+    </div>
+
+    <div id="passkey-status" style="text-align:center; font-size:13px; color:rgba(255,255,255,0.4); margin-bottom: 16px;">
+        Waiting for biometric&hellip;
+    </div>
+
+    <div id="passkey-error" style="display:none; text-align:center; font-size:13px; color:rgba(248,113,113,0.8); margin-bottom: 16px;"></div>
+
+    <div>
+        <button type="button" id="passkey-retry-btn" class="button button-continue" style="display:none;" onclick="beginPasskeyLogin()">
+            Try again
+        </button>
+    </div>
+
+    <div style="text-align:center; margin-top: 12px;">
+        <a href="#" id="use-password-link" style="color:rgba(255,255,255,0.4); font-size:12px; text-decoration:underline;"
+           onclick="document.getElementById('form_state').value='use_password'; document.getElementById('form').submit(); return false;">
+            Use password instead
+        </a>
+    </div>
+</div>
+
+<script>
+(function() {
+    var sessionEl = document.querySelector('input[name="session"]');
+    var sessionId = sessionEl ? sessionEl.value : '';
+
+    window.beginPasskeyLogin = function() {
+        var statusEl = document.getElementById('passkey-status');
+        var errorEl = document.getElementById('passkey-error');
+        var retryBtn = document.getElementById('passkey-retry-btn');
+
+        statusEl.style.display = 'block';
+        statusEl.textContent = 'Waiting for biometric\u2026';
+        errorEl.style.display = 'none';
+        retryBtn.style.display = 'none';
+
+        fetch('/webauthn/login/begin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(options) {
+            options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
+            if (options.publicKey.allowCredentials) {
+                options.publicKey.allowCredentials.forEach(function(c) {
+                    c.id = base64urlToBuffer(c.id);
+                });
+            }
+            return navigator.credentials.get({ publicKey: options.publicKey });
+        })
+        .then(function(assertion) {
+            statusEl.textContent = 'Verifying\u2026';
+
+            var body = {
+                id: assertion.id,
+                rawId: bufferToBase64url(assertion.rawId),
+                type: assertion.type,
+                response: {
+                    authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+                    clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+                    signature: bufferToBase64url(assertion.response.signature),
+                    userHandle: assertion.response.userHandle ? bufferToBase64url(assertion.response.userHandle) : ''
+                }
+            };
+
+            return fetch('/webauthn/login/finish?session_id=' + encodeURIComponent(sessionId), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(result) {
+            if (result.redirect) {
+                window.location.href = result.redirect;
+            } else if (result.error) {
+                throw new Error(result.error);
+            }
+        })
+        .catch(function(err) {
+            statusEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            retryBtn.style.display = 'block';
+            if (err.name === 'AbortError' || err.name === 'NotAllowedError') {
+                errorEl.textContent = 'Authentication was cancelled.';
+            } else {
+                errorEl.textContent = err.message || 'Authentication failed.';
+            }
+        });
+    };
+
+    function base64urlToBuffer(base64url) {
+        var base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) base64 += '=';
+        var binary = atob(base64);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
+
+    function bufferToBase64url(buffer) {
+        var bytes = new Uint8Array(buffer);
+        var binary = '';
+        for (var i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    // Auto-start passkey authentication.
+    if (window.PublicKeyCredential) {
+        setTimeout(beginPasskeyLogin, 300);
+    } else {
+        document.getElementById('passkey-status').textContent = 'Passkeys are not supported on this device.';
+        document.getElementById('use-password-link').style.color = 'rgba(0,170,156,0.8)';
+    }
+})();
+</script>

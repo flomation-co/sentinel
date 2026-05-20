@@ -76,6 +76,13 @@ type GoogleOAuthConfig struct {
 	RedirectURL  string `json:"redirect_url" env:"GOOGLE_OAUTH_REDIRECT_URL"`
 }
 
+// WebAuthnConfig holds the relying party settings for passkey authentication.
+type WebAuthnConfig struct {
+	RPDisplayName string   `json:"display_name"`
+	RPID          string   `json:"rp_id"`
+	RPOrigins     []string `json:"rp_origins"`
+}
+
 // MetricsConfig controls the Prometheus /metrics endpoint.
 type MetricsConfig struct {
 	Enabled    bool     `json:"enabled" env:"METRICS_ENABLED" arg:"metrics-enabled"`
@@ -88,6 +95,7 @@ type Config struct {
 	Security     SecurityConfig     `json:"security"`
 	Notification NotificationConfig `json:"notification"`
 	GeoIPConfig  GeoIPConfig        `json:"geo"`
+	WebAuthn     *WebAuthnConfig    `json:"webauthn,omitempty"`
 	GoogleOAuth  *GoogleOAuthConfig `json:"google_oauth,omitempty"`
 	Metrics      MetricsConfig      `json:"metrics"`
 }
