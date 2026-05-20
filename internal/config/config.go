@@ -69,11 +69,18 @@ func (l *ListenerConfig) ListenAddress() string {
 	return fmt.Sprintf("%v:%v", l.Address, l.Port)
 }
 
-// GoogleOAuthConfig holds credentials for "Sign in with Google".
-type GoogleOAuthConfig struct {
-	ClientID     string `json:"client_id" env:"GOOGLE_OAUTH_CLIENT_ID"`
-	ClientSecret string `json:"client_secret" env:"GOOGLE_OAUTH_CLIENT_SECRET"`
-	RedirectURL  string `json:"redirect_url" env:"GOOGLE_OAUTH_REDIRECT_URL"`
+// OAuthProviderConfig holds credentials for an OAuth sign-in provider.
+type OAuthProviderConfig struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	RedirectURL  string `json:"redirect_url"`
+}
+
+// WebAuthnConfig holds the relying party settings for passkey authentication.
+type WebAuthnConfig struct {
+	RPDisplayName string   `json:"display_name"`
+	RPID          string   `json:"rp_id"`
+	RPOrigins     []string `json:"rp_origins"`
 }
 
 // MetricsConfig controls the Prometheus /metrics endpoint.
@@ -87,9 +94,13 @@ type Config struct {
 	Database     DatabaseConfig     `json:"database"`
 	Security     SecurityConfig     `json:"security"`
 	Notification NotificationConfig `json:"notification"`
-	GeoIPConfig  GeoIPConfig        `json:"geo"`
-	GoogleOAuth  *GoogleOAuthConfig `json:"google_oauth,omitempty"`
-	Metrics      MetricsConfig      `json:"metrics"`
+	GeoIPConfig    GeoIPConfig          `json:"geo"`
+	WebAuthn       *WebAuthnConfig      `json:"webauthn,omitempty"`
+	GoogleOAuth    *OAuthProviderConfig `json:"google_oauth,omitempty"`
+	MicrosoftOAuth *OAuthProviderConfig `json:"microsoft_oauth,omitempty"`
+	GitHubOAuth    *OAuthProviderConfig `json:"github_oauth,omitempty"`
+	LinkedInOAuth  *OAuthProviderConfig `json:"linkedin_oauth,omitempty"`
+	Metrics        MetricsConfig        `json:"metrics"`
 }
 
 func LoadConfig(path string) (*Config, error) {

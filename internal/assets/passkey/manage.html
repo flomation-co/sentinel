@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passkeys — Flomation</title>
+    <link rel="icon" type="image/png" href="/assets/images/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background-colour: #161019;
+            --primary-foreground: #460070;
+            --primary-background: #33263a;
+            --secondary-background: #00aa9c;
+            --primary-font-colour: #fff;
+            --secondary-font-colour: #ae9fb9;
+            --card-bg: rgba(19, 19, 19, 0.85);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --btn-primary-bg: var(--secondary-background);
+            --btn-primary-hover: #00c4b4;
+            --danger: rgba(248, 113, 113, 0.8);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.95em;
+            color: var(--primary-font-colour);
+            background: radial-gradient(at top left, var(--background-colour), var(--primary-background));
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            padding: 60px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo {
+            display: block;
+            height: 22px;
+            margin: 0 auto 24px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--secondary-font-colour);
+            text-align: center;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            width: 100%;
+            text-align: center;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-primary {
+            background: var(--btn-primary-bg);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--btn-primary-hover);
+            box-shadow: 0 4px 16px rgba(0, 170, 156, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: rgba(248, 113, 113, 0.08);
+            color: var(--danger);
+            border: 1px solid rgba(248, 113, 113, 0.15);
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            width: auto;
+        }
+
+        .btn-danger:hover {
+            background: rgba(248, 113, 113, 0.15);
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--secondary-font-colour);
+            border: 1px solid var(--card-border);
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+            width: auto;
+            padding: 10px 18px;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--primary-font-colour);
+        }
+
+        #status {
+            margin: 12px 0;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .status-ok { color: var(--secondary-background); }
+        .status-err { color: var(--danger); }
+
+        .cred-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 20px 0;
+        }
+
+        .cred-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+        }
+
+        .cred-icon {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            background: rgba(0, 170, 156, 0.12);
+            color: var(--secondary-background);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .cred-info { flex: 1; min-width: 0; }
+        .cred-name { font-size: 14px; font-weight: 500; }
+        .cred-meta { font-size: 12px; color: var(--secondary-font-colour); margin-top: 3px; }
+
+        .empty {
+            text-align: center;
+            padding: 24px 0;
+            color: var(--secondary-font-colour);
+            font-size: 13px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .footer-links a {
+            color: var(--secondary-font-colour);
+            text-decoration: none;
+            font-size: 12px;
+            transition: color 0.15s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--secondary-background);
+        }
+
+        @media (max-width: 576px) {
+            .card { padding: 24px 18px; }
+            .page-wrapper { padding: 30px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+    <div class="container">
+        <div class="card">
+            <img src="/assets/images/flomation-wordtype-white.png" alt="Flomation" class="logo" onerror="this.style.display='none'">
+
+            <h1>Passkeys</h1>
+            <p class="subtitle">Sign in with your fingerprint, face, or security key.<br>Passkeys are phishing-resistant and don't require a password.</p>
+
+            <button class="btn btn-primary" id="add-btn" onclick="registerPasskey()">
+                Add Passkey
+            </button>
+
+            <div id="status"></div>
+
+            <div class="cred-list" id="cred-list"></div>
+
+            <div class="footer-links">
+                <a href="/mfa">MFA Settings</a>
+                <a href="/">Back to Login</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var credentials = $$CREDENTIALS$$;
+
+function renderCredentials() {
+    var list = document.getElementById('cred-list');
+    if (!credentials || credentials.length === 0) {
+        list.innerHTML = '<div class="empty">No passkeys registered yet.</div>';
+        return;
+    }
+    list.innerHTML = credentials.map(function(c) {
+        return '<div class="cred-card">' +
+            '<div class="cred-icon">' +
+                '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="16" r="1"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+            '</div>' +
+            '<div class="cred-info">' +
+                '<div class="cred-name">' + escapeHtml(c.name) + '</div>' +
+                '<div class="cred-meta">Added ' + c.created_at + ' &middot; Last used: ' + c.last_used + '</div>' +
+            '</div>' +
+            '<button class="btn btn-danger" onclick="deletePasskey(\'' + c.id + '\')">Remove</button>' +
+        '</div>';
+    }).join('');
+}
+
+function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
+}
+
+function setStatus(msg, isError) {
+    var el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = isError ? 'status-err' : 'status-ok';
+}
+
+function registerPasskey() {
+    setStatus('Starting registration\u2026', false);
+
+    fetch('/webauthn/register/begin', { method: 'POST', credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(options) {
+        options.publicKey.challenge = base64urlToBuffer(options.publicKey.challenge);
+        options.publicKey.user.id = base64urlToBuffer(options.publicKey.user.id);
+        if (options.publicKey.excludeCredentials) {
+            options.publicKey.excludeCredentials.forEach(function(c) { c.id = base64urlToBuffer(c.id); });
+        }
+        setStatus('Complete the biometric prompt\u2026', false);
+        return navigator.credentials.create({ publicKey: options.publicKey });
+    })
+    .then(function(cred) {
+        setStatus('Saving\u2026', false);
+        var body = {
+            id: cred.id,
+            rawId: bufferToBase64url(cred.rawId),
+            type: cred.type,
+            response: {
+                attestationObject: bufferToBase64url(cred.response.attestationObject),
+                clientDataJSON: bufferToBase64url(cred.response.clientDataJSON)
+            }
+        };
+        return fetch('/webauthn/register/finish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(body)
+        });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+        if (result.error) throw new Error(result.error);
+        setStatus('Passkey "' + result.name + '" registered successfully.', false);
+        setTimeout(function() { window.location.reload(); }, 1000);
+    })
+    .catch(function(err) {
+        if (err.name === 'AbortError' || err.name === 'NotAllowedError') {
+            setStatus('Registration cancelled.', true);
+        } else {
+            setStatus(err.message || 'Registration failed.', true);
+        }
+    });
+}
+
+function deletePasskey(id) {
+    if (!confirm('Remove this passkey? You will no longer be able to sign in with it.')) return;
+
+    fetch('/webauthn/credential/' + id, { method: 'DELETE', credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+        if (result.error) throw new Error(result.error);
+        credentials = credentials.filter(function(c) { return c.id !== id; });
+        renderCredentials();
+        setStatus('Passkey removed.', false);
+    })
+    .catch(function(err) {
+        setStatus(err.message || 'Unable to remove passkey.', true);
+    });
+}
+
+function base64urlToBuffer(b64) {
+    var base64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    var bin = atob(base64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+}
+
+function bufferToBase64url(buf) {
+    var bytes = new Uint8Array(buf);
+    var bin = '';
+    for (var i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+renderCredentials();
+</script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import (
 
 	"flomation.app/sentinel/internal/mfa"
 	appmetrics "flomation.app/sentinel/internal/metrics"
+	"flomation.app/sentinel/internal/passkey"
 	"flomation.app/sentinel/internal/session"
 	"flomation.app/sentinel/internal/user"
 
@@ -26,6 +27,7 @@ type Service struct {
 	user    *user.Service
 	session *session.Service
 	mfa     *mfa.Service
+	passkey *passkey.Service
 }
 
 func corsPublic(c *gin.Context) {
@@ -66,6 +68,15 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 		mfa:     mfa.New(config, db),
 	}
 
+	if config.WebAuthn != nil {
+		pk, err := passkey.New(config.WebAuthn, db)
+		if err != nil {
+			log.WithField("error", err).Warn("unable to initialise WebAuthn — passkeys disabled")
+		} else {
+			s.passkey = pk
+		}
+	}
+
 	m := owasp.
 		NewSecureHeadersMiddleware().
 		ReferrerPolicy(owasp.ReferrerPolicySameOrigin).
@@ -93,9 +104,9 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/password", s.resetPassword)
 	s.engine.POST("/password", s.setPassword)
 
-	// Google OAuth routes
-	s.engine.GET("/auth/google/login", s.googleLogin)
-	s.engine.GET("/auth/google/callback", s.googleCallback)
+	// OAuth SSO routes (Google, Microsoft, GitHub, LinkedIn)
+	s.engine.GET("/auth/:provider/login", s.oauthLogin)
+	s.engine.GET("/auth/:provider/callback", s.oauthCallback)
 
 	s.engine.NoRoute(s.staticAssets)
 
@@ -149,6 +160,16 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/mfa/qr", Sentinel(s.config), s.mfaQR)
 	s.engine.POST("/mfa/verify", Sentinel(s.config), s.mfaVerify)
 	s.engine.POST("/mfa/disable", Sentinel(s.config), s.mfaDisable)
+
+	// Passkey / WebAuthn routes
+	if s.passkey != nil {
+		s.engine.POST("/webauthn/login/begin", s.webauthnLoginBegin)
+		s.engine.POST("/webauthn/login/finish", s.webauthnLoginFinish)
+		s.engine.GET("/passkeys", Sentinel(s.config), s.passkeyManage)
+		s.engine.POST("/webauthn/register/begin", Sentinel(s.config), s.webauthnRegisterBegin)
+		s.engine.POST("/webauthn/register/finish", Sentinel(s.config), s.webauthnRegisterFinish)
+		s.engine.DELETE("/webauthn/credential/:id", Sentinel(s.config), s.webauthnDeleteCredential)
+	}
 
 	return &s, nil
 }
