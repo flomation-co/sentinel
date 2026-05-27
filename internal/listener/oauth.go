@@ -364,8 +364,8 @@ func (s *Service) oauthCallback(c *gin.Context) {
 // linkOrCreateSSOUser finds or creates a user for the given SSO identity.
 func (s *Service) linkOrCreateSSOUser(provider string, info *oauthUserInfo) (string, error) {
 	// Check for existing SSO link.
-	ssoAcct, err := s.user.Database().GetSSOAccount(provider, info.ProviderID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	ssoAcct, err := s.user.Database().FindSSOAccount(provider, info.ProviderID)
+	if err != nil {
 		return "", fmt.Errorf("SSO lookup: %w", err)
 	}
 

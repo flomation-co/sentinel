@@ -147,6 +147,11 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 		c.Redirect(http.StatusTemporaryRedirect, logoutUrl)
 	})
 
+	// SSO routes
+	s.engine.GET("/auth/:provider", s.ssoRedirect)
+	s.engine.GET("/auth/:provider/callback", s.ssoCallback)
+	s.engine.GET("/api/sso/providers", corsAuthenticated, s.ssoProviders)
+
 	s.engine.POST("/api/token", s.issueToken)
 	s.engine.POST("/api/user", s.registerUser)
 	s.engine.GET("/api/user", Sentinel(s.config), s.getUser)
