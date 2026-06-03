@@ -36,6 +36,21 @@ var activeSessions = promauto.NewGauge(prometheus.GaugeOpts{
 	Help: "Number of active (non-expired) sessions.",
 })
 
+var registeredUsers = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "flomation_auth_registered_users",
+	Help: "Total number of registered users.",
+})
+
+var staleUsers = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "flomation_auth_stale_users",
+	Help: "Number of users whose last session was more than 28 days ago or who have never logged in.",
+})
+
+var mfaEnabledPercent = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "flomation_auth_mfa_enabled_percent",
+	Help: "Percentage of registered users with MFA enabled.",
+})
+
 // StartCollector launches a background goroutine that periodically
 // queries the database to update gauge metrics.
 func StartCollector(db *sqlx.DB, interval time.Duration) {
@@ -54,7 +69,36 @@ func StartCollector(db *sqlx.DB, interval time.Duration) {
 
 func collect(db *sqlx.DB) {
 	var count int64
-	if err := db.Get(&count, `SELECT COUNT(*) FROM session WHERE expires_at > NOW()`); err == nil {
+
+	// Active sessions
+	if err := db.Get(&count, `SELECT COUNT(*) FROM session WHERE expiration > NOW()`); err == nil {
 		activeSessions.Set(float64(count))
+	}
+
+	// Total registered users
+	var totalUsers int64
+	if err := db.Get(&totalUsers, `SELECT COUNT(*) FROM "user"`); err == nil {
+		registeredUsers.Set(float64(totalUsers))
+	}
+
+	// Stale users: last session > 28 days ago, or never logged in
+	if err := db.Get(&count, `
+		SELECT COUNT(*) FROM "user" u
+		WHERE NOT EXISTS (
+			SELECT 1 FROM session s
+			WHERE s.user_id = u.id
+			  AND s.expiration > NOW() - INTERVAL '28 days'
+		)`); err == nil {
+		staleUsers.Set(float64(count))
+	}
+
+	// MFA enabled percentage
+	if totalUsers > 0 {
+		var mfaCount int64
+		if err := db.Get(&mfaCount, `SELECT COUNT(DISTINCT user_id) FROM mfa_device WHERE enabled = TRUE`); err == nil {
+			mfaEnabledPercent.Set(float64(mfaCount) / float64(totalUsers) * 100.0)
+		}
+	} else {
+		mfaEnabledPercent.Set(0)
 	}
 }
