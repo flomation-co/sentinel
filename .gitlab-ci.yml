@@ -82,6 +82,7 @@ build-rpm-8:
   extends: .build-rpm-template
   only:
     - main
+  when: manual
   variables:
     EL_VERSION: "8"
     CI_TEMPLATES_REF: "main"
@@ -99,6 +100,7 @@ build-rpm-9:
   extends: .build-rpm-template
   only:
     - main
+  when: manual
   variables:
     EL_VERSION: "9"
     CI_TEMPLATES_REF: "main"
@@ -116,6 +118,7 @@ build-rpm-8-arm64:
   extends: .build-rpm-template
   only:
     - main
+  when: manual
   variables:
     EL_VERSION: "8"
     CI_TEMPLATES_REF: "main"
@@ -133,6 +136,7 @@ build-rpm-9-arm64:
   extends: .build-rpm-template
   only:
     - main
+  when: manual
   variables:
     EL_VERSION: "9"
     CI_TEMPLATES_REF: "main"
@@ -166,6 +170,7 @@ build-deb-arm64:
   extends: .build-deb-template
   only:
     - main
+  when: manual
   variables:
     CI_TEMPLATES_REF: "main"
     APPLICATION_BINARY: "${PACKAGE_NAME}-arm64-linux*"
@@ -182,6 +187,7 @@ build-msi:
   extends: .build-msi-template
   only:
     - main
+  when: manual
   variables:
     CI_TEMPLATES_REF: "main"
     APPLICATION_BINARY: "${PACKAGE_NAME}-amd64-windows*"
@@ -441,7 +447,7 @@ Deploy to Sandbox:
     - main
   script:
     - mkdir -p ~/.ssh && echo "${OVH_DEPLOY_KEY}" > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
-    - ssh -o StrictHostKeyChecking=no ubuntu@${OVH_HOST} "sudo apt update && sudo apt install -y ${PACKAGE} && sudo systemctl restart ${SERVICE}"
+    - ssh -o StrictHostKeyChecking=no ubuntu@${OVH_HOST} "sudo apt update && sudo apt install -y ${PACKAGE} && sudo systemctl reset-failed ${SERVICE} && sudo systemctl restart ${SERVICE}"
 
 Deploy to Live:
   stage: Production
@@ -454,7 +460,7 @@ Deploy to Live:
   when: manual
   script:
     - mkdir -p ~/.ssh && echo "${OVH_LIVE_DEPLOY_KEY}" > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
-    - ssh -o StrictHostKeyChecking=no ubuntu@${OVH_HOST} "sudo apt update && sudo apt install -y ${PACKAGE} && sudo systemctl restart ${SERVICE}"
+    - ssh -o StrictHostKeyChecking=no ubuntu@${OVH_HOST} "sudo apt update && sudo apt install -y ${PACKAGE} && sudo systemctl reset-failed ${SERVICE} && sudo systemctl restart ${SERVICE}"
 
 sync-to-github:
   extends: .sync-to-github-template
