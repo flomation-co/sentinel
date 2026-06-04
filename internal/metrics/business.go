@@ -81,10 +81,11 @@ func collect(db *sqlx.DB) {
 		registeredUsers.Set(float64(totalUsers))
 	}
 
-	// Stale users: last session > 28 days ago, or never logged in
+	// Stale users: last session > 28 days ago, or never logged in (excluding recently created accounts)
 	if err := db.Get(&count, `
 		SELECT COUNT(*) FROM "user" u
-		WHERE NOT EXISTS (
+		WHERE u.created_at < NOW() - INTERVAL '28 days'
+		  AND NOT EXISTS (
 			SELECT 1 FROM session s
 			WHERE s.user_id = u.id
 			  AND s.expiration > NOW() - INTERVAL '28 days'
