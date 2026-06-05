@@ -97,25 +97,26 @@ func (s *Service) GetUserByID(id string) (*persistence.User, error) {
 }
 
 func (s *Service) GetUserByUsernameAndPassword(username string, password string) (*persistence.User, error) {
-	u, err := s.database.GetUserByUsername(username)
+	// Look up by username first to get the user record for failed-attempt tracking.
+	existing, err := s.database.GetUserByUsername(username)
 	if err != nil {
 		time.Sleep(time.Second * 10)
 		return nil, err
 	}
 
-	if u == nil {
+	if existing == nil {
 		time.Sleep(time.Second * 10)
 		return nil, nil
 	}
 
-	u, err = s.database.GetUserByUsernameAndPassword(username, password)
+	// Verify password. On failure, increment failed attempts and delay.
+	u, err := s.database.GetUserByUsernameAndPassword(username, password)
 	if err != nil {
-		if err := s.database.UpdateFailedAttempts(u.ID); err != nil {
-			time.Sleep(time.Second * 10)
-			return nil, err
-		}
+		// Use the pre-fetched record for failed-attempt tracking —
+		// the password check may return nil on auth failure.
+		_ = s.database.UpdateFailedAttempts(existing.ID)
 
-		fa := u.FailedAttempts + 1
+		fa := existing.FailedAttempts + 1
 		if fa > int64(len(delays)) {
 			fa = int64(len(delays)) - 1
 		}

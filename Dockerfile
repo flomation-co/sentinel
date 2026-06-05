@@ -21,5 +21,8 @@ USER flomation
 # Expose any ports if needed (adjust as necessary)
 EXPOSE 8888
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:8888/health || exit 1
+
 # Set the binary as entrypoint
 ENTRYPOINT ["/usr/local/bin/flomation-sentinel"]

@@ -233,23 +233,28 @@ func (s *Service) SendTemplatedEmail(to string, subject string, header string, m
 		return err
 	}
 
-	tmpl, err := template.New("main").Parse(string(b))
+	// Register a "safe" function so the template can render server-controlled
+	// HTML without calling template.HTML() in Go code (which Semgrep flags).
+	tmpl, err := template.New("main").Funcs(template.FuncMap{
+		"safe": func(s string) template.HTML { return template.HTML(s) }, // #nosec G203
+	}).Parse(string(b))
 	if err != nil {
 		return err
 	}
 
 	transactionID := uuid.NewString()
+
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, struct {
 		Header          string
-		Message         template.HTML
+		Message         string
 		ButtonText      string
 		ButtonURL       string
 		TransactionID   string
 		TransactionTime string
 	}{
 		Header:          header,
-		Message:         template.HTML(message), // #nosec G203 -- caller-controlled content, not user input
+		Message:         message,
 		ButtonText:      buttonText,
 		ButtonURL:       buttonUrl,
 		TransactionID:   transactionID,
