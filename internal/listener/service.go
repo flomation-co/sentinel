@@ -164,6 +164,13 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.POST("/mfa/verify", Sentinel(s.config), s.mfaVerify)
 	s.engine.POST("/mfa/disable", Sentinel(s.config), s.mfaDisable)
 
+	// JSON status endpoint for the editor's Getting Started checklist
+	// to auto-detect "Enable MFA" completion without scraping the HTML
+	// management page. CORS-enabled because the editor is on a
+	// different origin.
+	s.engine.GET("/api/mfa/status", corsAuthenticated, Sentinel(s.config), s.mfaStatus)
+	s.engine.OPTIONS("/api/mfa/status", corsAuthenticated)
+
 	// Passkey / WebAuthn routes
 	if s.passkey != nil {
 		s.engine.POST("/webauthn/login/begin", s.webauthnLoginBegin)

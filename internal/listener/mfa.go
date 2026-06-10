@@ -220,6 +220,28 @@ func collectMFACode(c *gin.Context) string {
 	return c.DefaultPostForm("mfa_code", "")
 }
 
+// mfaStatus returns the current MFA enrolment state for the
+// authenticated user as JSON. Used by the editor's Getting Started
+// checklist to auto-detect "Enable MFA" completion without scraping
+// the HTML management page. Auth comes through the standard Sentinel
+// middleware (JWT cookie or Authorization header).
+func (s *Service) mfaStatus(c *gin.Context) {
+	v, exists := c.Get(FlomationUserID)
+	if !exists {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	userID := v.(string)
+
+	enrolled, err := s.mfa.IsEnrolled(userID)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err, "user_id": userID}).Error("unable to read MFA enrolment status")
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"enabled": enrolled})
+}
+
 // wrapMFAPage wraps MFA content in the Sentinel authenticate page template.
 func (s *Service) wrapMFAPage(content string) string {
 	header, err := assets.Fragments.ReadFile("authenticate/default/header.html")
