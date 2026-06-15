@@ -504,7 +504,79 @@
             color: rgba(255, 255, 255, 0.5);
             line-height: 1.6;
         }
+
+        /* Password field with show/hide toggle. The wrapper carries the
+           top/bottom margin that the input itself used to own — the
+           input is reset so the trailing icon button can sit flush
+           inside the border-box. */
+        .password-field {
+            position: relative;
+            width: 100%;
+            margin-top: 12px;
+            margin-bottom: 12px;
+        }
+
+        .password-field input[type="password"],
+        .password-field input[type="text"] {
+            margin-top: 0;
+            margin-bottom: 0;
+            padding-right: 44px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            transform: translateY(-50%);
+            background: transparent;
+            border: 0;
+            padding: 6px;
+            margin: 0;
+            width: auto;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .password-toggle:hover,
+        .password-toggle:focus-visible {
+            color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.06);
+            outline: none;
+        }
+
+        .password-toggle svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
+
+        /* Default state: showing the closed-eye icon (password masked,
+           click to reveal). aria-pressed="true" means the password is
+           currently revealed, so we swap to the open-eye crossed-out
+           icon (click to mask again). */
+        .password-toggle .eye-off { display: none; }
+        .password-toggle[aria-pressed="true"] .eye { display: none; }
+        .password-toggle[aria-pressed="true"] .eye-off { display: block; }
     </style>
+    <script>
+        // togglePasswordVisibility flips the type of the .password-input
+        // inside the calling button's wrapper between "password" and
+        // "text". aria-pressed mirrors the revealed state so screen
+        // readers (and our CSS icon swap) follow along.
+        function togglePasswordVisibility(btn) {
+            var input = btn.parentNode.querySelector('input.password-input');
+            if (!input) return;
+            var revealed = input.type === 'text';
+            input.type = revealed ? 'password' : 'text';
+            btn.setAttribute('aria-pressed', revealed ? 'false' : 'true');
+            btn.setAttribute('aria-label', revealed ? 'Show password' : 'Hide password');
+        }
+    </script>
 </head>
 
 <body>
