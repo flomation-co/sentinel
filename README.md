@@ -2,14 +2,6 @@
 
 > Identity and access management (IDaM) service for the Flomation stack — authentication, sessions, and user management.
 
-## The Flomation stack
-
-Sentinel is a shared service: it is the identity provider that the rest of the Flomation
-platform authenticates against. Other products — including the
-[Flomation Automate](https://gitlab.tooling.flomation.app/flomation/automate) services —
-delegate sign-in to Sentinel and validate the JWTs it issues (this is the "identity
-service" / `LOGIN_URL` those services are configured with).
-
 ## Overview
 
 Flomation Sentinel is a Go HTTP service that handles authentication, session management,
