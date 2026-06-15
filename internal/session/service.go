@@ -18,6 +18,16 @@ const (
 
 	StateSetPassword = 50
 
+	// StateMFAForReset gates the password-reset flow behind the
+	// user's enrolled second factor. A session moves here when the
+	// reset email link is opened and the user has MFA enabled; on
+	// successful code validation it transitions to StateSetPassword
+	// so the user can pick a new password. Without this gate,
+	// anyone with one-time access to the user's email could reset
+	// the password unchallenged — defeating the entire point of
+	// having a second factor.
+	StateMFAForReset = 51
+
 	StateComplete = 100
 	StateCleared  = 999
 )

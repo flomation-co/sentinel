@@ -42,6 +42,13 @@ const (
 	fragmentSubmitPassword            = "submit_password"
 	fragmentSubmitMFA                 = "submit_mfa"
 	fragmentEnterMFA                  = "enter_mfa"
+	// fragmentEnterMFAForReset shares the TOTP-prompt shape with
+	// enter_mfa but uses reset-specific copy ("Continue resetting
+	// your password" instead of "Log in"), posts back with
+	// form_state=submit_mfa_for_reset, and is rendered against
+	// /password instead of /authenticate.
+	fragmentEnterMFAForReset          = "enter_mfa_reset"
+	fragmentSubmitMFAForReset         = "submit_mfa_for_reset"
 	fragmentSetPassword               = "set_new_password"
 	fragmentForgottenPassword         = "forgot_password"
 	fragmentSubmitForgottenPassword   = "submit_forgot_password"
@@ -69,9 +76,75 @@ func (s *Service) staticAssets(c *gin.Context) {
 	c.Data(http.StatusOK, http.DetectContentType(b), b)
 }
 
+// handleResetMFA validates a TOTP code submitted from the MFA-for-
+// reset prompt. On success it moves the session to StateSetPassword
+// and renders the set-password screen; on failure it re-renders the
+// MFA prompt so the user can retry without losing their session.
+//
+// Rejects sessions that aren't in StateMFAForReset to prevent
+// somebody hand-crafting a submit_mfa_for_reset POST from anywhere
+// else in the flow.
+func (s *Service) handleResetMFA(c *gin.Context, sessionID string, state int) {
+	if state != session.StateMFAForReset {
+		log.WithFields(log.Fields{
+			"state": state,
+		}).Error("session incorrect state for reset-flow MFA")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	userID, err := s.session.GetSessionUserID(sessionID)
+	if err != nil || userID == nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to get session user id")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	u, err := s.user.GetUserByID(*userID)
+	if err != nil || u == nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to get user during reset MFA")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	code := collectMFACode(c)
+	valid, err := s.mfa.ValidateCode(*userID, code)
+	if err != nil || !valid {
+		log.WithFields(log.Fields{
+			"error":   err,
+			"user_id": *userID,
+		}).Warn("invalid MFA code on password reset")
+		s.renderResetMFAPrompt(c, sessionID, u.Username)
+		return
+	}
+
+	if err := s.session.UpdateState(sessionID, session.StateSetPassword); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to update session state after reset MFA")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	content, err := s.loadHTMLFragment("set_password")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to load set_password fragment")
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	value := strings.ReplaceAll(*content, "$$USER$$", u.Username)
+	value = strings.ReplaceAll(value, "$$SESSION_ID$$", sessionID)
+	c.Data(http.StatusOK, "text/html", []byte(value))
+}
+
 func (s *Service) setPassword(c *gin.Context) {
 	sessionID := c.DefaultPostForm("session", "")
-	password := c.DefaultPostForm("new-password", "")
 
 	state, err := s.session.GetSessionState(sessionID)
 	if err != nil {
@@ -82,6 +155,17 @@ func (s *Service) setPassword(c *gin.Context) {
 		return
 	}
 
+	// The MFA-for-reset fragment posts back to /password with
+	// form_state=submit_mfa_for_reset. Branch here so the same
+	// endpoint handles both the TOTP step and the eventual new
+	// password — sharing the route keeps the form's empty
+	// action="" (post-to-self) working without any client-side
+	// awareness of which step it's on.
+	if c.DefaultPostForm("form_state", "") == fragmentSubmitMFAForReset {
+		s.handleResetMFA(c, sessionID, state)
+		return
+	}
+
 	if state != session.StateSetPassword {
 		log.WithFields(log.Fields{
 			"state": state,
@@ -89,6 +173,8 @@ func (s *Service) setPassword(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
+
+	password := c.DefaultPostForm("new-password", "")
 
 	userID, err := s.session.GetSessionUserID(sessionID)
 	if err != nil {
@@ -157,18 +243,36 @@ func (s *Service) resetPassword(c *gin.Context) {
 		return
 	}
 
-	if err := s.session.UpdateState(sess.ID, session.StateSetPassword); err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("unable to update session")
-		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-
 	if err := s.session.SetSessionUserID(sess.ID, u.ID); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to set session user id")
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+
+	// When MFA is enrolled, require a valid TOTP code before
+	// letting the user pick a new password. The reset email
+	// already proves "controls the inbox"; the TOTP code proves
+	// "still controls the second factor". Skipping this would
+	// let a one-time email compromise drain the account.
+	mfaEnrolled, _ := s.mfa.IsEnrolled(u.ID)
+	if mfaEnrolled {
+		if err := s.session.UpdateState(sess.ID, session.StateMFAForReset); err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("unable to update session state for MFA-gated password reset")
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		s.renderResetMFAPrompt(c, sess.ID, u.Username)
+		return
+	}
+
+	if err := s.session.UpdateState(sess.ID, session.StateSetPassword); err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to update session")
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
@@ -185,6 +289,24 @@ func (s *Service) resetPassword(c *gin.Context) {
 	value := strings.ReplaceAll(*content, "$$USER$$", u.Username)
 	value = strings.ReplaceAll(value, "$$SESSION_ID$$", sess.ID)
 
+	c.Data(http.StatusOK, "text/html", []byte(value))
+}
+
+// renderResetMFAPrompt loads the MFA-for-reset fragment and writes
+// it with the user and session substituted. Pulled out as a helper
+// because both the initial GET (after a valid reset link) and the
+// POST retry path (after a bad TOTP code) render the same screen.
+func (s *Service) renderResetMFAPrompt(c *gin.Context, sessionID, username string) {
+	content, err := s.loadHTMLFragment(fragmentEnterMFAForReset)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to load reset MFA fragment")
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	value := strings.ReplaceAll(*content, "$$USER$$", username)
+	value = strings.ReplaceAll(value, "$$SESSION_ID$$", sessionID)
 	c.Data(http.StatusOK, "text/html", []byte(value))
 }
 
