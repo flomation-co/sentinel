@@ -31,11 +31,35 @@ func (s *Service) FindSSOAccount(provider, providerUserID string) (*SSOAccount, 
 	return &result, nil
 }
 
-// CreateSSOAccount links an SSO provider account to a user.
-func (s *Service) CreateSSOAccount(userID, provider, providerUserID, email string) error {
+// CreateSSOAccount links an SSO provider account to a user. UTM parameters
+// captured at link time are persisted so we can attribute the source of the
+// linked identity even when the underlying user account already existed.
+// Empty UTM strings are stored as NULL.
+func (s *Service) CreateSSOAccount(userID, provider, providerUserID, email string, utm UTMParameters) error {
 	_, err := s.db.Exec(
-		"INSERT INTO sso_account (user_id, provider, provider_user_id, email) VALUES ($1, $2, $3, PGP_SYM_ENCRYPT($4, $5)) ON CONFLICT (provider, provider_user_id) DO NOTHING",
+		`INSERT INTO sso_account (
+			user_id,
+			provider,
+			provider_user_id,
+			email,
+			utm_source,
+			utm_medium,
+			utm_campaign,
+			utm_term,
+			utm_content,
+			utm_referrer
+		) VALUES (
+			$1, $2, $3,
+			PGP_SYM_ENCRYPT($4, $5),
+			NULLIF($6, ''),
+			NULLIF($7, ''),
+			NULLIF($8, ''),
+			NULLIF($9, ''),
+			NULLIF($10, ''),
+			NULLIF($11, '')
+		) ON CONFLICT (provider, provider_user_id) DO NOTHING`,
 		userID, provider, providerUserID, email, s.config.Database.EncryptionKey,
+		utm.Source, utm.Medium, utm.Campaign, utm.Term, utm.Content, utm.Referrer,
 	)
 	return err
 }

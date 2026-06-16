@@ -147,6 +147,24 @@ func (s *Service) GetSessionUsername(ID string) (*string, error) {
 	return &result, nil
 }
 
+// GetSessionUTMParameters returns the UTM attribution captured when the
+// authentication session was first started (in the metadata JSON column).
+// Returns a zero-value struct if the session is missing or has no UTM data.
+func (s *Service) GetSessionUTMParameters(ID string) (UTMParameters, error) {
+	var result UTMParameters
+	if err := s.stmtGetSessionUTMParameters.Get(&result, struct {
+		ID string `db:"id"`
+	}{
+		ID: ID,
+	}); err != nil {
+		if err == sql.ErrNoRows {
+			return UTMParameters{}, nil
+		}
+		return UTMParameters{}, err
+	}
+	return result, nil
+}
+
 func (s *Service) GetSessionRedirectURL(ID string) (*string, error) {
 	var result sql.NullString
 

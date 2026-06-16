@@ -122,3 +122,9 @@ func (s *Service) GetSessionUsername(sessionID string) (*string, error) {
 func (s *Service) GetSessionRedirectURL(sessionID string) (*string, error) {
 	return s.db.GetSessionRedirectURL(sessionID)
 }
+
+// GetSessionUTMParameters surfaces the UTM attribution captured at session
+// start so the registration path can persist it against the new user account.
+func (s *Service) GetSessionUTMParameters(sessionID string) (persistence.UTMParameters, error) {
+	return s.db.GetSessionUTMParameters(sessionID)
+}

@@ -44,8 +44,8 @@ func New(config *config.Config, database *persistence.Service) *Service {
 // Database exposes the persistence layer for SSO account operations.
 func (s *Service) Database() *persistence.Service { return s.database }
 
-func (s *Service) RegisterUser(username string) (*persistence.User, error) {
-	u, err := s.database.RegisterUser(username)
+func (s *Service) RegisterUser(username string, utm persistence.UTMParameters) (*persistence.User, error) {
+	u, err := s.database.RegisterUser(username, utm)
 	if err != nil {
 		return nil, err
 	}
@@ -176,8 +176,8 @@ func (s *Service) UpdateDisplayName(id string, displayName string) error {
 }
 
 // RegisterUserSSO creates a user account without a password (SSO-only login).
-func (s *Service) RegisterUserSSO(email, displayName string) (*persistence.User, error) {
-	u, err := s.database.RegisterUser(email)
+func (s *Service) RegisterUserSSO(email, displayName string, utm persistence.UTMParameters) (*persistence.User, error) {
+	u, err := s.database.RegisterUser(email, utm)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +203,8 @@ func (s *Service) FindSSOAccount(provider, providerUserID string) (*persistence.
 }
 
 // LinkSSOAccount creates a link between a user and an SSO provider account.
-func (s *Service) LinkSSOAccount(userID, provider, providerUserID, email string) error {
-	return s.database.CreateSSOAccount(userID, provider, providerUserID, email)
+func (s *Service) LinkSSOAccount(userID, provider, providerUserID, email string, utm persistence.UTMParameters) error {
+	return s.database.CreateSSOAccount(userID, provider, providerUserID, email, utm)
 }
 
 // GetSSOAccounts returns all SSO accounts linked to a user.

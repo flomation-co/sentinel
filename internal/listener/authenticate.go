@@ -490,7 +490,18 @@ func (s *Service) authenticate(c *gin.Context) {
 		// is a no-op (the fragment auto-triggers JS). Show passkey again.
 		fragment = fragmentEnterPasskey
 	case fragmentRegister:
-		u, err := s.user.RegisterUser(email)
+		// Carry forward UTM attribution captured when the session was started
+		// so the new user record reflects the campaign that drove the sign-up.
+		// A failure to read metadata should not block registration.
+		utm, utmErr := s.session.GetSessionUTMParameters(sessionID)
+		if utmErr != nil {
+			log.WithFields(log.Fields{
+				"error":      utmErr,
+				"session_id": sessionID,
+			}).Warn("unable to read session UTM parameters")
+		}
+
+		u, err := s.user.RegisterUser(email, utm)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,

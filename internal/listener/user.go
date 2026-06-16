@@ -4,13 +4,20 @@ import (
 	"net/http"
 	"time"
 
+	"flomation.app/sentinel/internal/persistence"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
 
 type RegisterRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username    string `json:"username"`
+	Password    string `json:"password"`
+	UTMSource   string `json:"utm_source,omitempty"`
+	UTMMedium   string `json:"utm_medium,omitempty"`
+	UTMCampaign string `json:"utm_campaign,omitempty"`
+	UTMTerm     string `json:"utm_term,omitempty"`
+	UTMContent  string `json:"utm_content,omitempty"`
+	UTMReferrer string `json:"utm_referrer,omitempty"`
 }
 
 func (s *Service) registerUser(c *gin.Context) {
@@ -23,7 +30,16 @@ func (s *Service) registerUser(c *gin.Context) {
 		return
 	}
 
-	u, err := s.user.RegisterUser(request.Username)
+	utm := persistence.UTMParameters{
+		Source:   request.UTMSource,
+		Medium:   request.UTMMedium,
+		Campaign: request.UTMCampaign,
+		Term:     request.UTMTerm,
+		Content:  request.UTMContent,
+		Referrer: request.UTMReferrer,
+	}
+
+	u, err := s.user.RegisterUser(request.Username, utm)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,

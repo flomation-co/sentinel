@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"io"
 	"net/http"
 
+	"flomation.app/sentinel/internal/persistence"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -18,8 +20,45 @@ import (
 	"golang.org/x/oauth2/google"
 	googleapi "google.golang.org/api/oauth2/v2"
 	"google.golang.org/api/option"
-
 )
+
+// utmCookieName carries UTM attribution across the provider round-trip.
+// We can't put UTM in the OAuth state parameter (many providers cap the
+// state length, and it's user-visible on the consent screen) so it lives
+// in a short-lived cookie alongside oauth_state/oauth_provider.
+const utmCookieName = "oauth_utm"
+
+// encodeUTMCookie serialises UTM parameters to a compact base64 JSON blob
+// suitable for a cookie. Returns an empty string when no UTM is present,
+// in which case the caller should skip setting the cookie entirely.
+func encodeUTMCookie(utm persistence.UTMParameters) string {
+	if utm == (persistence.UTMParameters{}) {
+		return ""
+	}
+	b, err := json.Marshal(utm)
+	if err != nil {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// decodeUTMCookie inverts encodeUTMCookie. Returns a zero-value struct
+// when the cookie is missing, malformed, or empty — never an error, so
+// the OAuth callback isn't blocked on bad attribution data.
+func decodeUTMCookie(value string) persistence.UTMParameters {
+	if value == "" {
+		return persistence.UTMParameters{}
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil {
+		return persistence.UTMParameters{}
+	}
+	var utm persistence.UTMParameters
+	if err := json.Unmarshal(raw, &utm); err != nil {
+		return persistence.UTMParameters{}
+	}
+	return utm
+}
 
 // oauthUserInfo holds the profile data extracted from any OAuth provider.
 type oauthUserInfo struct {
@@ -273,6 +312,20 @@ func (s *Service) oauthLogin(c *gin.Context) {
 	c.SetCookie("oauth_state", state, 300, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
 	c.SetCookie("oauth_provider", providerName, 300, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
 
+	// Capture UTM attribution before the provider round-trip. Reading the
+	// query here means a marketing campaign can append ?utm_source=…&… to
+	// the social-login link directly and we'll still record the source.
+	if encoded := encodeUTMCookie(persistence.UTMParameters{
+		Source:   c.Query("utm_source"),
+		Medium:   c.Query("utm_medium"),
+		Campaign: c.Query("utm_campaign"),
+		Term:     c.Query("utm_term"),
+		Content:  c.Query("utm_content"),
+		Referrer: c.Query("utm_referrer"),
+	}); encoded != "" {
+		c.SetCookie(utmCookieName, encoded, 300, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
+	}
+
 	url := provider.Config(s).AuthCodeURL(state, oauth2.AccessTypeOffline)
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
@@ -295,6 +348,13 @@ func (s *Service) oauthCallback(c *gin.Context) {
 	}
 	c.SetCookie("oauth_state", "", -1, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
 	c.SetCookie("oauth_provider", "", -1, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
+
+	// Recover the UTM block stashed at oauthLogin and clear the cookie now
+	// that it has served its purpose — leaving it set would let the next
+	// login attempt inherit the previous campaign attribution.
+	utmCookie, _ := c.Cookie(utmCookieName)
+	utm := decodeUTMCookie(utmCookie)
+	c.SetCookie(utmCookieName, "", -1, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, true)
 
 	// Check for error from provider.
 	if errMsg := c.Query("error"); errMsg != "" {
@@ -337,7 +397,7 @@ func (s *Service) oauthCallback(c *gin.Context) {
 	}).Info("OAuth callback")
 
 	// Link or create user — shared logic for all providers.
-	userID, err := s.linkOrCreateSSOUser(providerName, userInfo)
+	userID, err := s.linkOrCreateSSOUser(providerName, userInfo, utm)
 	if err != nil {
 		log.WithFields(log.Fields{"error": err, "provider": providerName}).Error("SSO user linking failed")
 		c.String(http.StatusInternalServerError, "Authentication failed")
@@ -362,7 +422,11 @@ func (s *Service) oauthCallback(c *gin.Context) {
 }
 
 // linkOrCreateSSOUser finds or creates a user for the given SSO identity.
-func (s *Service) linkOrCreateSSOUser(provider string, info *oauthUserInfo) (string, error) {
+// utm carries the attribution captured at oauthLogin time and is persisted
+// on the new user (if one is created) and always on the new sso_account row,
+// so we can distinguish "campaign drove a new sign-up" from "campaign drove
+// an existing user to link a new social identity".
+func (s *Service) linkOrCreateSSOUser(provider string, info *oauthUserInfo, utm persistence.UTMParameters) (string, error) {
 	// Check for existing SSO link.
 	ssoAcct, err := s.user.Database().FindSSOAccount(provider, info.ProviderID)
 	if err != nil {
@@ -383,8 +447,8 @@ func (s *Service) linkOrCreateSSOUser(provider string, info *oauthUserInfo) (str
 	if existing != nil {
 		userID = existing.ID
 	} else {
-		// Create a new user.
-		newUser, err := s.user.RegisterUser(info.Email)
+		// Create a new user — attribute the sign-up to the inbound campaign.
+		newUser, err := s.user.RegisterUser(info.Email, utm)
 		if err != nil {
 			return "", fmt.Errorf("register user: %w", err)
 		}
@@ -396,8 +460,8 @@ func (s *Service) linkOrCreateSSOUser(provider string, info *oauthUserInfo) (str
 		_ = s.user.Database().Verify(userID)
 	}
 
-	// Create the SSO link.
-	if err := s.user.Database().CreateSSOAccount(userID, provider, info.ProviderID, info.Email); err != nil {
+	// Create the SSO link, also tagged with the attribution that drove it.
+	if err := s.user.Database().CreateSSOAccount(userID, provider, info.ProviderID, info.Email, utm); err != nil {
 		log.WithFields(log.Fields{"error": err, "provider": provider}).Error("unable to create SSO link")
 	}
 
