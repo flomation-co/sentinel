@@ -16,6 +16,18 @@ type User struct {
 	FailedAttempts    int64     `db:"failed_attempt"`
 }
 
+// UTMParameters captures marketing attribution data carried on the URL at
+// the point a new user account is created or a new SSO identity is linked.
+// All fields are optional — pass a zero-value struct when none are available.
+type UTMParameters struct {
+	Source   string `db:"utm_source"`
+	Medium   string `db:"utm_medium"`
+	Campaign string `db:"utm_campaign"`
+	Term     string `db:"utm_term"`
+	Content  string `db:"utm_content"`
+	Referrer string `db:"utm_referrer"`
+}
+
 func (s *Service) UserExists(username string) (bool, error) {
 	var count int64
 	if err := s.stmtDoesUserExist.Get(&count, struct {
@@ -128,14 +140,26 @@ func (s *Service) GetUserByPasswordToken(token string) (*User, error) {
 	return &u, nil
 }
 
-func (s *Service) RegisterUser(username string) (*User, error) {
+func (s *Service) RegisterUser(username string, utm UTMParameters) (*User, error) {
 	var id string
 	if err := s.stmtInsertUser.Get(&id, struct {
-		Username string `db:"username"`
-		Key      string `db:"key"`
+		Username    string `db:"username"`
+		Key         string `db:"key"`
+		UTMSource   string `db:"utm_source"`
+		UTMMedium   string `db:"utm_medium"`
+		UTMCampaign string `db:"utm_campaign"`
+		UTMTerm     string `db:"utm_term"`
+		UTMContent  string `db:"utm_content"`
+		UTMReferrer string `db:"utm_referrer"`
 	}{
-		Username: username,
-		Key:      s.config.Database.EncryptionKey,
+		Username:    username,
+		Key:         s.config.Database.EncryptionKey,
+		UTMSource:   utm.Source,
+		UTMMedium:   utm.Medium,
+		UTMCampaign: utm.Campaign,
+		UTMTerm:     utm.Term,
+		UTMContent:  utm.Content,
+		UTMReferrer: utm.Referrer,
 	}); err != nil {
 		return nil, err
 	}

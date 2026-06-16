@@ -43,6 +43,7 @@ type Service struct {
 	stmtGetSessionUserID        *sqlx.NamedStmt
 	stmtGetSessionUsername      *sqlx.NamedStmt
 	stmtGetSessionRedirectURL   *sqlx.NamedStmt
+	stmtGetSessionUTMParameters *sqlx.NamedStmt
 
 	stmtInsertPasswordReset    *sqlx.NamedStmt
 	stmtGetUserByPasswordToken *sqlx.NamedStmt
@@ -240,10 +241,22 @@ func (s *Service) configure() error {
 	s.stmtInsertUser, err = s.db.PrepareNamed(`
 		INSERT INTO "user" (
 		    username,
-		    username_hash
+		    username_hash,
+		    utm_source,
+		    utm_medium,
+		    utm_campaign,
+		    utm_term,
+		    utm_content,
+		    utm_referrer
 		) VALUES (
 		    PGP_SYM_ENCRYPT(LOWER(:username), :key),
-		  	DIGEST(LOWER(:username), 'sha256')
+		  	DIGEST(LOWER(:username), 'sha256'),
+		    NULLIF(:utm_source, ''),
+		    NULLIF(:utm_medium, ''),
+		    NULLIF(:utm_campaign, ''),
+		    NULLIF(:utm_term, ''),
+		    NULLIF(:utm_content, ''),
+		    NULLIF(:utm_referrer, '')
 		) RETURNING id;
 	`)
 	if err != nil {
@@ -442,8 +455,25 @@ func (s *Service) configure() error {
 	}
 
 	s.stmtGetSessionRedirectURL, err = s.db.PrepareNamed(`
-		SELECT	
+		SELECT
 		    metadata->>'redirect_url'
+		FROM
+		    session s
+		WHERE
+		    s.id = :id;
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetSessionUTMParameters, err = s.db.PrepareNamed(`
+		SELECT
+		    COALESCE(metadata->>'utm_source',   '') AS utm_source,
+		    COALESCE(metadata->>'utm_medium',   '') AS utm_medium,
+		    COALESCE(metadata->>'utm_campaign', '') AS utm_campaign,
+		    COALESCE(metadata->>'utm_term',     '') AS utm_term,
+		    COALESCE(metadata->>'utm_content',  '') AS utm_content,
+		    COALESCE(metadata->>'utm_referrer', '') AS utm_referrer
 		FROM
 		    session s
 		WHERE
