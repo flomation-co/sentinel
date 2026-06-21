@@ -148,6 +148,10 @@ func isInternalIP(address string) bool {
 func anonymizeIP(address string) string {
 	ip := net.ParseIP(address)
 	if ip == nil {
+		// Defensive and unreachable in practice: ResolveLocation only ever
+		// passes c.ClientIP(), which is always a valid IP literal. Kept so the
+		// helper stays total over arbitrary input — returning an honest
+		// "invalid" rather than a misleading all-zero address for a non-IP.
 		return "invalid"
 	}
 
