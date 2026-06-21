@@ -2,7 +2,6 @@ package session
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"flomation.app/sentinel/internal/config"
@@ -56,14 +55,14 @@ func New(config *config.Config, db *persistence.Service) *Service {
 }
 
 func (s *Service) StartSession(sess Session) (*Session, error) {
-	if sess.IPAddress != nil && *sess.IPAddress != "127.0.0.1" {
-		data, err := geo.GetGeoDataFromIP(*s.config, *sess.IPAddress)
-		if err != nil {
-			return nil, err
+	// Best-effort geo enrichment. ResolveLocation gates on the configured API
+	// key, skips internal/loopback traffic, and never returns an error — a
+	// failed lookup must not block session creation (which previously blanked
+	// the login page with an empty 200 for any non-loopback client).
+	if sess.IPAddress != nil {
+		if loc := geo.ResolveLocation(*s.config, *sess.IPAddress); loc != nil {
+			sess.Location = loc
 		}
-
-		loc := fmt.Sprintf("%v, %v", data.Location.City, data.Location.Country.Name)
-		sess.Location = &loc
 	}
 
 	sess.State = StateNew
