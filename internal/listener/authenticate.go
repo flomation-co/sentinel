@@ -24,10 +24,8 @@ func (s *Service) checkNewDeviceFromContext(c *gin.Context, userID string) {
 
 	go func() {
 		location := ""
-		if ip != "127.0.0.1" {
-			if data, err := geo.GetGeoDataFromIP(cfg, ip); err == nil && data != nil {
-				location = fmt.Sprintf("%s, %s", data.Location.City, data.Location.Country.Name)
-			}
+		if loc := geo.ResolveLocation(cfg, ip); loc != nil {
+			location = *loc
 		}
 		s.user.CheckNewDevice(userID, ip, ua, location)
 	}()
@@ -239,7 +237,7 @@ func (s *Service) resetPassword(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to start session")
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
@@ -350,7 +348,7 @@ func (s *Service) verifyUser(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to start session")
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
@@ -416,7 +414,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Error("unable to start new session")
-			c.AbortWithStatus(http.StatusOK)
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 

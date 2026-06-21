@@ -81,7 +81,7 @@ func (s *Service) issueToken(c *gin.Context) {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to start session")
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
