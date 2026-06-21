@@ -67,7 +67,11 @@ type Data struct {
 	Time       TimeData       `json:"time"`
 }
 
-func GetGeoDataFromIP(config config.Config, address string) (*Data, error) {
+// getGeoDataFromIP performs the raw ip2loc lookup. It is intentionally
+// unexported: ResolveLocation is the only supported entry point, so callers
+// cannot bypass the API-key gate and internal-IP skip by reaching for the raw
+// lookup directly.
+func getGeoDataFromIP(config config.Config, address string) (*Data, error) {
 	var client http.Client
 	var data Data
 
@@ -135,6 +139,31 @@ func isInternalIP(address string) bool {
 		ip.IsUnspecified()
 }
 
+// anonymizeIP masks the host portion of an address for GDPR-safe logging: the
+// last octet of an IPv4 address and the last 80 bits (everything below the /48)
+// of an IPv6 address are zeroed. This keeps the coarse network useful for
+// debugging while no longer logging a single user's full IP, which is PII under
+// GDPR. A value that does not parse as an IP is reported as "invalid" rather
+// than echoed back verbatim.
+func anonymizeIP(address string) string {
+	ip := net.ParseIP(address)
+	if ip == nil {
+		return "invalid"
+	}
+
+	if v4 := ip.To4(); v4 != nil {
+		return fmt.Sprintf("%d.%d.%d.0", v4[0], v4[1], v4[2])
+	}
+
+	// IPv6: keep the first 48 bits (/48), zero the remaining 80.
+	masked := make(net.IP, net.IPv6len)
+	copy(masked, ip.To16())
+	for i := 6; i < net.IPv6len; i++ {
+		masked[i] = 0
+	}
+	return masked.String()
+}
+
 // ResolveLocation returns a human-readable "City, Country" string for the given
 // client address, or nil when geo enrichment is unavailable. It is best-effort
 // and never fails the caller: geolocation is decorative session metadata, so a
@@ -152,11 +181,11 @@ func ResolveLocation(config config.Config, address string) *string {
 		return nil
 	}
 
-	data, err := GetGeoDataFromIP(config, address)
+	data, err := getGeoDataFromIP(config, address)
 	if err != nil || data == nil {
 		log.WithFields(log.Fields{
-			"error":   err,
-			"address": address,
+			"error":      err,
+			"ip_network": anonymizeIP(address),
 		}).Warn("geo lookup failed; continuing without location")
 		return nil
 	}

@@ -23,7 +23,7 @@ func TestGetGeoDataFromIP(t *testing.T) {
 		t.Skip("GEOIP_API_KEY not set; skipping live geo lookup test")
 	}
 
-	data, err := GetGeoDataFromIP(config.Config{
+	data, err := getGeoDataFromIP(config.Config{
 		GeoIPConfig: config.GeoIPConfig{
 			APIKey: os.Getenv("GEOIP_API_KEY"),
 		},
@@ -39,7 +39,7 @@ func TestGetGeoDataFromIP(t *testing.T) {
 func TestGetGeoDataFromBadIP(t *testing.T) {
 	RegisterTestingT(t)
 
-	_, err := GetGeoDataFromIP(config.Config{
+	_, err := getGeoDataFromIP(config.Config{
 		GeoIPConfig: config.GeoIPConfig{
 			APIKey: "GEOIP_API_KEY",
 		},
@@ -88,6 +88,25 @@ func TestResolveLocationGating(t *testing.T) {
 	for _, addr := range []string{"", "127.0.0.1", "::1", "10.1.2.3", "192.168.0.1", "fe80::1"} {
 		Expect(ResolveLocation(withKey, addr)).To(BeNil(), "expected nil for %q", addr)
 	}
+}
+
+func TestAnonymizeIP(t *testing.T) {
+	RegisterTestingT(t)
+
+	cases := map[string]string{
+		"8.8.8.8":          "8.8.8.0", // IPv4: last octet zeroed
+		"203.0.113.42":     "203.0.113.0",
+		"2001:db8::1":      "2001:db8::",      // IPv6: kept to /48
+		"2001:db8:abcd::5": "2001:db8:abcd::", // /48 keeps the third group; bits below it dropped
+		"not-an-ip":        "invalid",
+		"":                 "invalid",
+	}
+	for in, want := range cases {
+		Expect(anonymizeIP(in)).To(Equal(want), "anonymizeIP(%q)", in)
+	}
+
+	// The masked value must never equal the full input IP (the PII guarantee).
+	Expect(anonymizeIP("8.8.8.8")).ToNot(Equal("8.8.8.8"))
 }
 
 // swapBaseURL points the geo client at u for the duration of a test and
