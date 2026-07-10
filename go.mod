@@ -1,6 +1,6 @@
 module flomation.app/sentinel
 
-go 1.26.2
+go 1.26.5
 
 require (
 	github.com/flomation-co/gin-owasp-headers v0.0.0-20260109111326-c70a414e6954
@@ -96,7 +96,7 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
-	github.com/quic-go/quic-go v0.57.0 // indirect
+	github.com/quic-go/quic-go v0.59.1 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.6 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
