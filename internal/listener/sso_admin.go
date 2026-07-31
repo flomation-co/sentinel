@@ -27,6 +27,13 @@ func (s *Service) serviceTokenGuard(c *gin.Context) {
 // txtVerificationName is the DNS TXT host the customer adds the token under.
 const txtVerificationPrefix = "flomation-verification="
 
+// adminRedirectURI returns the exact OIDC redirect_uri Sentinel will use, so the
+// UI can show the customer precisely what to register in their IdP (it must
+// match byte-for-byte). Derived from Sentinel's own Listener.URL.
+func (s *Service) adminRedirectURI(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"redirect_uri": s.ssoRedirectURL()})
+}
+
 // ── Connections ──────────────────────────────────────────────────────
 
 func (s *Service) adminListConnections(c *gin.Context) {

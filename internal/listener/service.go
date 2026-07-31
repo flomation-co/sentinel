@@ -119,6 +119,7 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	// Internal SSO admin API — called by the main API service (the org-admin
 	// front door). Guarded by the shared service token.
 	admin := s.engine.Group("/internal/sso", s.serviceTokenGuard)
+	admin.GET("/redirect-uri", s.adminRedirectURI)
 	admin.GET("/connection", s.adminListConnections)
 	admin.POST("/connection", s.adminCreateConnection)
 	admin.PUT("/connection/:id", s.adminUpdateConnection)

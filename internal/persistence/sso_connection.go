@@ -11,6 +11,7 @@ import (
 type SSOConnection struct {
 	ID             string    `db:"id" json:"id"`
 	OrganisationID string    `db:"organisation_id" json:"organisation_id"`
+	Name           *string   `db:"name" json:"name,omitempty"`
 	Protocol       string    `db:"protocol" json:"protocol"`
 	Issuer         string    `db:"issuer" json:"issuer"`
 	TenantID       *string   `db:"tenant_id" json:"tenant_id,omitempty"`
@@ -38,10 +39,10 @@ func (d SSODomain) Verified() bool { return d.VerifiedAt != nil }
 func (s *Service) CreateSSOConnection(c SSOConnection) (string, error) {
 	var id string
 	err := s.db.Get(&id, `
-		INSERT INTO sso_connection (organisation_id, protocol, issuer, tenant_id, client_id, client_secret, enabled)
-		VALUES ($1, $2, $3, $4, $5, PGP_SYM_ENCRYPT($6, $7), $8)
+		INSERT INTO sso_connection (organisation_id, name, protocol, issuer, tenant_id, client_id, client_secret, enabled)
+		VALUES ($1, $2, $3, $4, $5, $6, PGP_SYM_ENCRYPT($7, $8), $9)
 		RETURNING id
-	`, c.OrganisationID, c.Protocol, c.Issuer, c.TenantID, c.ClientID, derefOr(c.ClientSecret), s.config.Database.EncryptionKey, c.Enabled)
+	`, c.OrganisationID, c.Name, c.Protocol, c.Issuer, c.TenantID, c.ClientID, derefOr(c.ClientSecret), s.config.Database.EncryptionKey, c.Enabled)
 	return id, err
 }
 
@@ -51,15 +52,15 @@ func (s *Service) UpdateSSOConnection(c SSOConnection) error {
 	if c.ClientSecret != nil {
 		_, err := s.db.Exec(`
 			UPDATE sso_connection
-			SET issuer=$1, tenant_id=$2, client_id=$3, client_secret=PGP_SYM_ENCRYPT($4,$5), enabled=$6, updated_at=NOW()
-			WHERE id=$7 AND organisation_id=$8
-		`, c.Issuer, c.TenantID, c.ClientID, *c.ClientSecret, s.config.Database.EncryptionKey, c.Enabled, c.ID, c.OrganisationID)
+			SET name=$1, issuer=$2, tenant_id=$3, client_id=$4, client_secret=PGP_SYM_ENCRYPT($5,$6), enabled=$7, updated_at=NOW()
+			WHERE id=$8 AND organisation_id=$9
+		`, c.Name, c.Issuer, c.TenantID, c.ClientID, *c.ClientSecret, s.config.Database.EncryptionKey, c.Enabled, c.ID, c.OrganisationID)
 		return err
 	}
 	_, err := s.db.Exec(`
-		UPDATE sso_connection SET issuer=$1, tenant_id=$2, client_id=$3, enabled=$4, updated_at=NOW()
-		WHERE id=$5 AND organisation_id=$6
-	`, c.Issuer, c.TenantID, c.ClientID, c.Enabled, c.ID, c.OrganisationID)
+		UPDATE sso_connection SET name=$1, issuer=$2, tenant_id=$3, client_id=$4, enabled=$5, updated_at=NOW()
+		WHERE id=$6 AND organisation_id=$7
+	`, c.Name, c.Issuer, c.TenantID, c.ClientID, c.Enabled, c.ID, c.OrganisationID)
 	return err
 }
 
@@ -67,7 +68,7 @@ func (s *Service) UpdateSSOConnection(c SSOConnection) error {
 func (s *Service) GetSSOConnectionsForOrg(orgID string) ([]SSOConnection, error) {
 	var out []SSOConnection
 	err := s.db.Select(&out, `
-		SELECT id, organisation_id, protocol, issuer, tenant_id, client_id, enabled, created_at, updated_at
+		SELECT id, organisation_id, name, protocol, issuer, tenant_id, client_id, enabled, created_at, updated_at
 		FROM sso_connection WHERE organisation_id=$1 ORDER BY created_at
 	`, orgID)
 	return out, err
@@ -78,7 +79,7 @@ func (s *Service) GetSSOConnectionsForOrg(orgID string) ([]SSOConnection, error)
 func (s *Service) GetSSOConnectionByID(id string) (*SSOConnection, error) {
 	var c SSOConnection
 	err := s.db.Get(&c, `
-		SELECT id, organisation_id, protocol, issuer, tenant_id, client_id,
+		SELECT id, organisation_id, name, protocol, issuer, tenant_id, client_id,
 		       PGP_SYM_DECRYPT(client_secret, $2) AS client_secret, enabled, created_at, updated_at
 		FROM sso_connection WHERE id=$1
 	`, id, s.config.Database.EncryptionKey)
@@ -104,7 +105,7 @@ func (s *Service) DeleteSSOConnection(id, orgID string) error {
 func (s *Service) ResolveSSOByDomain(domain string) (*SSOConnection, error) {
 	var c SSOConnection
 	err := s.db.Get(&c, `
-		SELECT c.id, c.organisation_id, c.protocol, c.issuer, c.tenant_id, c.client_id,
+		SELECT c.id, c.organisation_id, c.name, c.protocol, c.issuer, c.tenant_id, c.client_id,
 		       PGP_SYM_DECRYPT(c.client_secret, $2) AS client_secret, c.enabled, c.created_at, c.updated_at
 		FROM sso_connection c
 		JOIN sso_domain d ON d.connection_id = c.id
