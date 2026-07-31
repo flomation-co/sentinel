@@ -446,7 +446,9 @@ func (s *Service) authenticate(c *gin.Context) {
 		// Home Realm Discovery: if the email's domain is claimed by a verified,
 		// enabled SSO connection, hand off to the IdP instead of prompting for a
 		// password. Runs before the user lookup so it also covers JIT sign-ups.
-		if domain := ssoDomainFromEmail(email); domain != "" {
+		// Break-glass emails are exempt so a broken SSO connection can't lock the
+		// org's emergency admins out.
+		if domain := ssoDomainFromEmail(email); domain != "" && !s.isBreakGlassEmail(email) {
 			if conn, derr := s.user.Database().ResolveSSOByDomain(domain); derr == nil && conn != nil {
 				c.Redirect(http.StatusSeeOther, "/sso/login/"+conn.ID)
 				return

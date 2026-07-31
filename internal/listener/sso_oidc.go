@@ -207,6 +207,18 @@ func (s *Service) ssoPost(ctx context.Context, url, token string, body interface
 	}
 }
 
+// isBreakGlassEmail reports whether the email is on the configured break-glass
+// list — such accounts skip SSO Home Realm Discovery and always use password/MFA.
+func (s *Service) isBreakGlassEmail(email string) bool {
+	e := strings.ToLower(strings.TrimSpace(email))
+	for _, b := range s.config.Security.BreakGlassEmails {
+		if strings.ToLower(strings.TrimSpace(b)) == e && e != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // ssoDomainFromEmail returns the lower-cased domain part of an email, or "".
 func ssoDomainFromEmail(email string) string {
 	at := strings.LastIndex(email, "@")
