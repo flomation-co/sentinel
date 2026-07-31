@@ -116,6 +116,18 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	s.engine.GET("/sso/login/:connection", s.ssoBegin)
 	s.engine.GET("/sso/callback", s.ssoCallback)
 
+	// Internal SSO admin API — called by the main API service (the org-admin
+	// front door). Guarded by the shared service token.
+	admin := s.engine.Group("/internal/sso", s.serviceTokenGuard)
+	admin.GET("/connection", s.adminListConnections)
+	admin.POST("/connection", s.adminCreateConnection)
+	admin.PUT("/connection/:id", s.adminUpdateConnection)
+	admin.DELETE("/connection/:id", s.adminDeleteConnection)
+	admin.GET("/connection/:id/domain", s.adminListDomains)
+	admin.POST("/connection/:id/domain", s.adminAddDomain)
+	admin.POST("/connection/:id/domain/:domainId/verify", s.adminVerifyDomain)
+	admin.DELETE("/connection/:id/domain/:domainId", s.adminDeleteDomain)
+
 	s.engine.NoRoute(s.staticAssets)
 
 	s.engine.GET("/version", corsPublic, func(c *gin.Context) {

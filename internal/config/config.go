@@ -31,6 +31,9 @@ type SecurityConfig struct {
 	Secret         string       `json:"secret" env:"AUTH_SECRET" arg:"auth-secret"`
 	LoginRedirect  *string      `json:"login_redirect" env:"AUTH_LOGIN_REDIRECT" arg:"auth-login-redirect"`
 	LogoutRedirect *string      `json:"logout_redirect" env:"AUTH_LOGOUT_REDIRECT" arg:"auth-logout-redirect"`
+	// ServiceToken guards the internal SSO admin API that the main API service
+	// calls (Editor → API → Sentinel). Shared secret; mTLS is a later hardening.
+	ServiceToken string `json:"service_token" env:"SERVICE_TOKEN" arg:"service-token"`
 }
 
 type SMTPConfig struct {
