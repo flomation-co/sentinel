@@ -443,6 +443,16 @@ func (s *Service) authenticate(c *gin.Context) {
 
 	switch formState {
 	case fragmentEnterEmailAddress:
+		// Home Realm Discovery: if the email's domain is claimed by a verified,
+		// enabled SSO connection, hand off to the IdP instead of prompting for a
+		// password. Runs before the user lookup so it also covers JIT sign-ups.
+		if domain := ssoDomainFromEmail(email); domain != "" {
+			if conn, derr := s.user.Database().ResolveSSOByDomain(domain); derr == nil && conn != nil {
+				c.Redirect(http.StatusSeeOther, "/sso/login/"+conn.ID)
+				return
+			}
+		}
+
 		u, err := s.user.GetUserByUsername(email)
 		if err != nil {
 			c.AbortWithStatus(http.StatusBadRequest)

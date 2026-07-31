@@ -5,6 +5,7 @@ import (
 
 	"flomation.app/sentinel/internal/mfa"
 	appmetrics "flomation.app/sentinel/internal/metrics"
+	"flomation.app/sentinel/internal/oidc"
 	"flomation.app/sentinel/internal/passkey"
 	"flomation.app/sentinel/internal/session"
 	"flomation.app/sentinel/internal/user"
@@ -28,6 +29,7 @@ type Service struct {
 	session *session.Service
 	mfa     *mfa.Service
 	passkey *passkey.Service
+	sso     *oidc.Engine
 }
 
 func corsPublic(c *gin.Context) {
@@ -66,6 +68,7 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 		user:    user.New(config, db),
 		session: session.New(config, db),
 		mfa:     mfa.New(config, db),
+		sso:     oidc.New(),
 	}
 
 	if config.WebAuthn != nil {
@@ -107,6 +110,11 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	// OAuth SSO routes (Google, Microsoft, GitHub, LinkedIn)
 	s.engine.GET("/auth/:provider/login", s.oauthLogin)
 	s.engine.GET("/auth/:provider/callback", s.oauthCallback)
+
+	// Enterprise SSO (OIDC / Entra) — static-first paths so they don't collide
+	// with the /auth/:provider wildcard above.
+	s.engine.GET("/sso/login/:connection", s.ssoBegin)
+	s.engine.GET("/sso/callback", s.ssoCallback)
 
 	s.engine.NoRoute(s.staticAssets)
 
