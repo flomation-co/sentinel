@@ -34,6 +34,9 @@ type SecurityConfig struct {
 	// ServiceToken guards the internal SSO admin API that the main API service
 	// calls (Editor → API → Sentinel). Shared secret; mTLS is a later hardening.
 	ServiceToken string `json:"service_token" env:"SERVICE_TOKEN" arg:"service-token"`
+	// APIURL is the base URL of the main API, called after an SSO login to sync
+	// org membership (Sentinel → API, best-effort).
+	APIURL string `json:"api_url" env:"API_URL" arg:"api-url"`
 }
 
 type SMTPConfig struct {
@@ -97,8 +100,8 @@ type SSOProviderConfig struct {
 	Enabled        bool     `json:"enabled"`
 	ClientID       string   `json:"client_id" env:"SSO_CLIENT_ID"`
 	ClientSecret   string   `json:"client_secret" env:"SSO_CLIENT_SECRET"`
-	TenantID       string   `json:"tenant_id,omitempty"`          // Microsoft only
-	AllowedDomains []string `json:"allowed_domains,omitempty"`    // Restrict to specific email domains
+	TenantID       string   `json:"tenant_id,omitempty"`       // Microsoft only
+	AllowedDomains []string `json:"allowed_domains,omitempty"` // Restrict to specific email domains
 }
 
 // SSOConfig holds the SSO provider configurations.
@@ -108,10 +111,10 @@ type SSOConfig struct {
 }
 
 type Config struct {
-	Listener     ListenerConfig     `json:"listener"`
-	Database     DatabaseConfig     `json:"database"`
-	Security     SecurityConfig     `json:"security"`
-	Notification NotificationConfig `json:"notification"`
+	Listener       ListenerConfig       `json:"listener"`
+	Database       DatabaseConfig       `json:"database"`
+	Security       SecurityConfig       `json:"security"`
+	Notification   NotificationConfig   `json:"notification"`
 	GeoIPConfig    GeoIPConfig          `json:"geo"`
 	WebAuthn       *WebAuthnConfig      `json:"webauthn,omitempty"`
 	GoogleOAuth    *OAuthProviderConfig `json:"google_oauth,omitempty"`

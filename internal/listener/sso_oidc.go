@@ -1,9 +1,12 @@
 package listener
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"flomation.app/sentinel/internal/oidc"
 	"flomation.app/sentinel/internal/persistence"
@@ -153,12 +156,37 @@ func (s *Service) ssoCallback(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
-// ensureOrgMembership is the best-effort Sentinel→API authorization-sync seam.
-// The API mTLS connector is wired in a follow-up commit; the login path already
-// calls this so wiring it is a one-function change.
-func (s *Service) ensureOrgMembership(_ context.Context, _ string, _ string, _ []string) {
-	// TODO(sso-phase1-api): call the API internal /internal/sso/ensure-membership
-	// and (phase 2) /internal/sso/reconcile over mTLS. Best-effort; log on error.
+// ssoHTTPClient is used for the best-effort Sentinel→API authorization sync.
+var ssoHTTPClient = &http.Client{Timeout: 8 * time.Second}
+
+// ensureOrgMembership tells the API to JIT the SSO user into the connection's
+// organisation. Best-effort: authentication is already done and the token is
+// about to be issued, so a failure here is logged but never blocks login.
+// (groups is unused in Phase 1; Phase 2 adds group→Team reconciliation.)
+func (s *Service) ensureOrgMembership(ctx context.Context, userID, orgID string, _ []string) {
+	apiURL := s.config.Security.APIURL
+	token := s.config.Security.ServiceToken
+	if apiURL == "" || token == "" || orgID == "" {
+		return
+	}
+	payload, _ := json.Marshal(map[string]string{"user_id": userID, "organisation_id": orgID})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		strings.TrimRight(apiURL, "/")+"/api/v1/sso/ensure-membership", bytes.NewReader(payload))
+	if err != nil {
+		log.WithField("error", err).Warn("sso ensure-membership: build request")
+		return
+	}
+	req.Header.Set("X-Service-Token", token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := ssoHTTPClient.Do(req)
+	if err != nil {
+		log.WithField("error", err).Warn("sso ensure-membership: request failed (login unaffected)")
+		return
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode >= 300 {
+		log.WithField("status", resp.StatusCode).Warn("sso ensure-membership: non-2xx (login unaffected)")
+	}
 }
 
 // ssoDomainFromEmail returns the lower-cased domain part of an email, or "".
