@@ -5,7 +5,6 @@
 CREATE TABLE IF NOT EXISTS sso_connection (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id UUID NOT NULL,
-    name VARCHAR,                                    -- display label, e.g. "Okta", "Microsoft Entra ID"
     protocol VARCHAR(10) NOT NULL DEFAULT 'oidc',   -- oidc | saml (saml later)
     issuer VARCHAR NOT NULL,                          -- e.g. https://login.microsoftonline.com/<tenant>/v2.0
     tenant_id VARCHAR,                                -- Entra tenant id, pinned on the id_token 'tid'
