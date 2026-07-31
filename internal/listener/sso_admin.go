@@ -24,8 +24,10 @@ func (s *Service) serviceTokenGuard(c *gin.Context) {
 	c.Next()
 }
 
-// txtVerificationName is the DNS TXT host the customer adds the token under.
-const txtVerificationPrefix = "flomation-verification="
+// txtVerificationHost is the dedicated DNS label the verification TXT record
+// lives under — i.e. flomation-verification.<domain> — so it never collides with
+// apex records (SPF/DMARC/other verifications) and is easy to add and remove.
+const txtVerificationHost = "flomation-verification"
 
 // adminRedirectURI returns the exact OIDC redirect_uri Sentinel will use, so the
 // UI can show the customer precisely what to register in their IdP (it must
@@ -121,8 +123,8 @@ func (s *Service) adminAddDomain(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"id":                 id,
 		"verification_token": token,
-		"record_name":        domain,
-		"record_value":       txtVerificationPrefix + token,
+		"record_name":        txtVerificationHost + "." + domain,
+		"record_value":       token,
 	})
 }
 
@@ -140,14 +142,13 @@ func (s *Service) adminVerifyDomain(c *gin.Context) {
 		return
 	}
 
-	want := txtVerificationPrefix + d.VerificationToken
-	records, lookupErr := net.LookupTXT(d.Domain)
+	records, lookupErr := net.LookupTXT(txtVerificationHost + "." + d.Domain)
 	if lookupErr != nil {
 		c.JSON(http.StatusOK, gin.H{"verified": false, "error": "DNS lookup failed"})
 		return
 	}
 	for _, r := range records {
-		if strings.TrimSpace(r) == want {
+		if strings.TrimSpace(r) == d.VerificationToken {
 			if err := s.user.Database().MarkSSODomainVerified(d.ID); err != nil {
 				c.AbortWithStatus(http.StatusInternalServerError)
 				return
