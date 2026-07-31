@@ -41,7 +41,12 @@ type Claims struct {
 	Email    string
 	Name     string
 	TenantID string   // 'tid'
-	Groups   []string // 'groups' (may be empty; overage handled by the caller via Graph)
+	Groups   []string // 'groups' (may be empty)
+	// GroupsOverage is true when the IdP signalled a group-overage (Entra caps
+	// groups in the token at ~200 and sets _claim_names instead). Groups is then
+	// NOT authoritative — the caller must fetch via the directory API (Graph) or
+	// skip group sync rather than treat the user as being in zero groups.
+	GroupsOverage bool
 }
 
 // Engine caches discovered providers per issuer (discovery is a network call).
@@ -125,17 +130,19 @@ func (e *Engine) Complete(ctx context.Context, conn Connection, redirectURL, cod
 	}
 
 	var raw struct {
-		OID               string   `json:"oid"`
-		Sub               string   `json:"sub"`
-		Email             string   `json:"email"`
-		PreferredUsername string   `json:"preferred_username"`
-		Name              string   `json:"name"`
-		TID               string   `json:"tid"`
-		Groups            []string `json:"groups"`
+		OID               string            `json:"oid"`
+		Sub               string            `json:"sub"`
+		Email             string            `json:"email"`
+		PreferredUsername string            `json:"preferred_username"`
+		Name              string            `json:"name"`
+		TID               string            `json:"tid"`
+		Groups            []string          `json:"groups"`
+		ClaimNames        map[string]string `json:"_claim_names"`
 	}
 	if err := idToken.Claims(&raw); err != nil {
 		return nil, fmt.Errorf("parse claims: %w", err)
 	}
+	overage := raw.ClaimNames != nil && raw.ClaimNames["groups"] != ""
 
 	// Tenant pinning — reject any token from a different Entra tenant.
 	if conn.TenantID != "" && raw.TID != "" && raw.TID != conn.TenantID {
@@ -155,11 +162,12 @@ func (e *Engine) Complete(ctx context.Context, conn Connection, redirectURL, cod
 	}
 
 	return &Claims{
-		Subject:  subject,
-		Email:    email,
-		Name:     raw.Name,
-		TenantID: raw.TID,
-		Groups:   raw.Groups,
+		Subject:       subject,
+		Email:         email,
+		Name:          raw.Name,
+		TenantID:      raw.TID,
+		Groups:        raw.Groups,
+		GroupsOverage: overage,
 	}, nil
 }
 

@@ -137,9 +137,9 @@ func (s *Service) ssoCallback(c *gin.Context) {
 		return
 	}
 
-	// Best-effort authorization sync (org membership now, group→Team in Phase 2).
-	// Never blocks authentication — Sentinel is the auth authority.
-	s.ensureOrgMembership(c.Request.Context(), userID, conn.OrganisationID, claims.Groups)
+	// Best-effort authorization sync (org membership + group→Team). Never blocks
+	// authentication — Sentinel is the auth authority.
+	s.syncSSOAuthorization(c.Request.Context(), userID, conn.OrganisationID, claims)
 
 	jwtToken, err := s.token.Create(userID, int64(s.config.Security.Cookie.Expiration))
 	if err != nil {
@@ -159,33 +159,51 @@ func (s *Service) ssoCallback(c *gin.Context) {
 // ssoHTTPClient is used for the best-effort Sentinel→API authorization sync.
 var ssoHTTPClient = &http.Client{Timeout: 8 * time.Second}
 
-// ensureOrgMembership tells the API to JIT the SSO user into the connection's
-// organisation. Best-effort: authentication is already done and the token is
-// about to be issued, so a failure here is logged but never blocks login.
-// (groups is unused in Phase 1; Phase 2 adds group→Team reconciliation.)
-func (s *Service) ensureOrgMembership(ctx context.Context, userID, orgID string, _ []string) {
+// syncSSOAuthorization pushes the user's org membership and (unless the group
+// list is in overage) their group→Team reconciliation to the API. Best-effort:
+// authentication is already done and the token is about to be issued, so any
+// failure here is logged but never blocks login.
+func (s *Service) syncSSOAuthorization(ctx context.Context, userID, orgID string, claims *oidc.Claims) {
 	apiURL := s.config.Security.APIURL
 	token := s.config.Security.ServiceToken
 	if apiURL == "" || token == "" || orgID == "" {
 		return
 	}
-	payload, _ := json.Marshal(map[string]string{"user_id": userID, "organisation_id": orgID})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		strings.TrimRight(apiURL, "/")+"/api/v1/sso/ensure-membership", bytes.NewReader(payload))
+	base := strings.TrimRight(apiURL, "/")
+
+	// 1. Ensure the user is a member of the connection's org.
+	s.ssoPost(ctx, base+"/api/v1/sso/ensure-membership", token,
+		map[string]interface{}{"user_id": userID, "organisation_id": orgID}, "ensure-membership")
+
+	// 2. Reconcile group→Team membership — ONLY when the group list is
+	// authoritative. On overage the token omits groups, so reconciling with an
+	// empty list would wrongly strip the user from every mapped Team.
+	if claims.GroupsOverage {
+		log.Warn("SSO group overage (>200 groups) — group→Team sync skipped; directory/Graph fetch is a follow-up")
+		return
+	}
+	s.ssoPost(ctx, base+"/api/v1/sso/reconcile", token,
+		map[string]interface{}{"user_id": userID, "organisation_id": orgID, "idp_groups": claims.Groups}, "reconcile")
+}
+
+// ssoPost is a best-effort service-to-service POST used by the auth sync.
+func (s *Service) ssoPost(ctx context.Context, url, token string, body interface{}, label string) {
+	payload, _ := json.Marshal(body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
-		log.WithField("error", err).Warn("sso ensure-membership: build request")
+		log.WithFields(log.Fields{"error": err, "call": label}).Warn("sso sync: build request")
 		return
 	}
 	req.Header.Set("X-Service-Token", token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := ssoHTTPClient.Do(req)
 	if err != nil {
-		log.WithField("error", err).Warn("sso ensure-membership: request failed (login unaffected)")
+		log.WithFields(log.Fields{"error": err, "call": label}).Warn("sso sync: request failed (login unaffected)")
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
-		log.WithField("status", resp.StatusCode).Warn("sso ensure-membership: non-2xx (login unaffected)")
+		log.WithFields(log.Fields{"status": resp.StatusCode, "call": label}).Warn("sso sync: non-2xx (login unaffected)")
 	}
 }
 
