@@ -52,16 +52,44 @@ func (s *Service) adminListConnections(c *gin.Context) {
 	c.JSON(http.StatusOK, conns)
 }
 
+// connectionInput is the inbound DTO. The storage struct tags ClientSecret
+// json:"-" so it never leaks in responses — which also means BindJSON can't read
+// it there. Binding through this DTO keeps both properties.
+type connectionInput struct {
+	OrganisationID string  `json:"organisation_id"`
+	Name           *string `json:"name"`
+	Protocol       string  `json:"protocol"`
+	Issuer         string  `json:"issuer"`
+	TenantID       *string `json:"tenant_id"`
+	ClientID       string  `json:"client_id"`
+	ClientSecret   *string `json:"client_secret"`
+	Enabled        bool    `json:"enabled"`
+}
+
+func (in connectionInput) toModel() persistence.SSOConnection {
+	protocol := in.Protocol
+	if protocol == "" {
+		protocol = "oidc"
+	}
+	return persistence.SSOConnection{
+		OrganisationID: in.OrganisationID,
+		Name:           in.Name,
+		Protocol:       protocol,
+		Issuer:         in.Issuer,
+		TenantID:       in.TenantID,
+		ClientID:       in.ClientID,
+		ClientSecret:   in.ClientSecret,
+		Enabled:        in.Enabled,
+	}
+}
+
 func (s *Service) adminCreateConnection(c *gin.Context) {
-	var body persistence.SSOConnection
-	if err := c.BindJSON(&body); err != nil || body.OrganisationID == "" || body.Issuer == "" || body.ClientID == "" {
+	var in connectionInput
+	if err := c.BindJSON(&in); err != nil || in.OrganisationID == "" || in.Issuer == "" || in.ClientID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "organisation_id, issuer and client_id are required"})
 		return
 	}
-	if body.Protocol == "" {
-		body.Protocol = "oidc"
-	}
-	id, err := s.user.Database().CreateSSOConnection(body)
+	id, err := s.user.Database().CreateSSOConnection(in.toModel())
 	if err != nil {
 		log.WithField("error", err).Error("create sso connection")
 		c.AbortWithStatus(http.StatusInternalServerError)
@@ -71,13 +99,14 @@ func (s *Service) adminCreateConnection(c *gin.Context) {
 }
 
 func (s *Service) adminUpdateConnection(c *gin.Context) {
-	var body persistence.SSOConnection
-	if err := c.BindJSON(&body); err != nil {
+	var in connectionInput
+	if err := c.BindJSON(&in); err != nil {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	body.ID = c.Param("id")
-	if err := s.user.Database().UpdateSSOConnection(body); err != nil {
+	conn := in.toModel()
+	conn.ID = c.Param("id")
+	if err := s.user.Database().UpdateSSOConnection(conn); err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
