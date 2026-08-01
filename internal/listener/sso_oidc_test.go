@@ -1,26 +1,51 @@
 package listener
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"flomation.app/sentinel/internal/config"
 )
 
-func TestIsBreakGlassEmail(t *testing.T) {
-	s := &Service{config: &config.Config{Security: config.SecurityConfig{
-		BreakGlassEmails: []string{"Admin@Flomation.co", " ops@example.com "},
-	}}}
-	cases := map[string]bool{
-		"admin@flomation.co": true,  // case-insensitive
-		"ADMIN@FLOMATION.CO": true,
-		"ops@example.com":    true, // whitespace-trimmed in config
-		"user@flomation.co":  false,
-		"":                   false,
-	}
-	for in, want := range cases {
-		if got := s.isBreakGlassEmail(in); got != want {
-			t.Errorf("isBreakGlassEmail(%q) = %v, want %v", in, got, want)
+// isOrgAdminBreakGlass is API-backed; test it against a mock API that returns a
+// canned admin verdict and asserts the service token is presented.
+func TestIsOrgAdminBreakGlass(t *testing.T) {
+	var gotToken string
+	var admin bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotToken = r.Header.Get("X-Service-Token")
+		w.Header().Set("Content-Type", "application/json")
+		if admin {
+			_, _ = w.Write([]byte(`{"admin":true}`))
+		} else {
+			_, _ = w.Write([]byte(`{"admin":false}`))
 		}
+	}))
+	defer srv.Close()
+
+	s := &Service{config: &config.Config{Security: config.SecurityConfig{
+		APIURL: srv.URL, ServiceToken: "secret-123",
+	}}}
+
+	admin = true
+	if !s.isOrgAdminBreakGlass(context.Background(), "user-1", "org-1") {
+		t.Fatal("expected admin=true to grant break-glass")
+	}
+	if gotToken != "secret-123" {
+		t.Fatalf("service token not presented, got %q", gotToken)
+	}
+
+	admin = false
+	if s.isOrgAdminBreakGlass(context.Background(), "user-1", "org-1") {
+		t.Fatal("expected admin=false to deny break-glass")
+	}
+
+	// Not configured → never break-glass.
+	empty := &Service{config: &config.Config{}}
+	if empty.isOrgAdminBreakGlass(context.Background(), "u", "o") {
+		t.Fatal("unconfigured should not break-glass")
 	}
 }
 

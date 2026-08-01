@@ -35,14 +35,8 @@ type SecurityConfig struct {
 	// calls (Editor → API → Sentinel). Shared secret; mTLS is a later hardening.
 	ServiceToken string `json:"service_token" env:"SERVICE_TOKEN" arg:"service-token"`
 	// APIURL is the base URL of the main API, called after an SSO login to sync
-	// org membership (Sentinel → API, best-effort).
+	// org membership, and at HRD to check org-admin break-glass (Sentinel → API).
 	APIURL string `json:"api_url" env:"API_URL" arg:"api-url"`
-	// BreakGlassEmails are exempt from SSO Home Realm Discovery: they always use
-	// the password/MFA flow even on an SSO-managed domain, so a broken or
-	// misconfigured SSO connection can never lock every admin out. Deliberately
-	// config-managed (not self-serve) so it can't be tampered with from a
-	// compromised admin session.
-	BreakGlassEmails []string `json:"break_glass_emails" env:"BREAK_GLASS_EMAILS"`
 }
 
 type SMTPConfig struct {

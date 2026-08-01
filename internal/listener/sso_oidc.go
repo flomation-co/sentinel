@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -207,16 +208,40 @@ func (s *Service) ssoPost(ctx context.Context, url, token string, body interface
 	}
 }
 
-// isBreakGlassEmail reports whether the email is on the configured break-glass
-// list — such accounts skip SSO Home Realm Discovery and always use password/MFA.
-func (s *Service) isBreakGlassEmail(email string) bool {
-	e := strings.ToLower(strings.TrimSpace(email))
-	for _, b := range s.config.Security.BreakGlassEmails {
-		if strings.ToLower(strings.TrimSpace(b)) == e && e != "" {
-			return true
-		}
+// isOrgAdminBreakGlass asks the API whether the user is an admin of the given
+// org. Org admins are exempt from SSO Home Realm Discovery (self-serve
+// break-glass) so a broken SSO connection can't lock them out. Best-effort: on
+// any error it returns false (fail toward SSO) — SSO being broken doesn't imply
+// the API is down, so the common case still resolves.
+func (s *Service) isOrgAdminBreakGlass(ctx context.Context, userID, orgID string) bool {
+	apiURL := s.config.Security.APIURL
+	token := s.config.Security.ServiceToken
+	if apiURL == "" || token == "" || userID == "" || orgID == "" {
+		return false
 	}
-	return false
+	u := strings.TrimRight(apiURL, "/") + "/api/v1/sso/is-org-admin?user_id=" +
+		url.QueryEscape(userID) + "&organisation_id=" + url.QueryEscape(orgID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("X-Service-Token", token)
+	resp, err := ssoHTTPClient.Do(req)
+	if err != nil {
+		log.WithField("error", err).Warn("sso break-glass admin check failed — defaulting to SSO")
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	var out struct {
+		Admin bool `json:"admin"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return false
+	}
+	return out.Admin
 }
 
 // ssoDomainFromEmail returns the lower-cased domain part of an email, or "".

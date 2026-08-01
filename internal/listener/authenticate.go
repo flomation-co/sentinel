@@ -32,14 +32,14 @@ func (s *Service) checkNewDeviceFromContext(c *gin.Context, userID string) {
 }
 
 const (
-	fragmentEnterEmailAddress         = "email_address"
-	fragmentRegister                  = "register"
-	fragmentPassword                  = "password"
-	fragmentEnterPasskey              = "enter_passkey"
-	fragmentPasswordError             = "password_error"
-	fragmentSubmitPassword            = "submit_password"
-	fragmentSubmitMFA                 = "submit_mfa"
-	fragmentEnterMFA                  = "enter_mfa"
+	fragmentEnterEmailAddress = "email_address"
+	fragmentRegister          = "register"
+	fragmentPassword          = "password"
+	fragmentEnterPasskey      = "enter_passkey"
+	fragmentPasswordError     = "password_error"
+	fragmentSubmitPassword    = "submit_password"
+	fragmentSubmitMFA         = "submit_mfa"
+	fragmentEnterMFA          = "enter_mfa"
 	// fragmentEnterMFAForReset shares the TOTP-prompt shape with
 	// enter_mfa but uses reset-specific copy ("Continue resetting
 	// your password" instead of "Log in"), posts back with
@@ -443,22 +443,26 @@ func (s *Service) authenticate(c *gin.Context) {
 
 	switch formState {
 	case fragmentEnterEmailAddress:
-		// Home Realm Discovery: if the email's domain is claimed by a verified,
-		// enabled SSO connection, hand off to the IdP instead of prompting for a
-		// password. Runs before the user lookup so it also covers JIT sign-ups.
-		// Break-glass emails are exempt so a broken SSO connection can't lock the
-		// org's emergency admins out.
-		if domain := ssoDomainFromEmail(email); domain != "" && !s.isBreakGlassEmail(email) {
-			if conn, derr := s.user.Database().ResolveSSOByDomain(domain); derr == nil && conn != nil {
-				c.Redirect(http.StatusSeeOther, "/sso/login/"+conn.ID)
-				return
-			}
-		}
-
 		u, err := s.user.GetUserByUsername(email)
 		if err != nil {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
+		}
+
+		// Home Realm Discovery: if the email's domain is claimed by a verified,
+		// enabled SSO connection, hand off to the IdP instead of prompting for a
+		// password — EXCEPT org admins of that connection's org, who keep the
+		// password/MFA flow as a self-serve break-glass so a broken SSO
+		// connection can't lock them out. New (JIT) users are never admins, so
+		// they still go to SSO.
+		if domain := ssoDomainFromEmail(email); domain != "" {
+			if conn, derr := s.user.Database().ResolveSSOByDomain(domain); derr == nil && conn != nil {
+				breakGlass := u != nil && s.isOrgAdminBreakGlass(c.Request.Context(), u.ID, conn.OrganisationID)
+				if !breakGlass {
+					c.Redirect(http.StatusSeeOther, "/sso/login/"+conn.ID)
+					return
+				}
+			}
 		}
 
 		if u == nil {
