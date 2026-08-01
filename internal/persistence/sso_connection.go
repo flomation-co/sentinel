@@ -20,6 +20,14 @@ type SSOConnection struct {
 	Enabled        bool      `db:"enabled" json:"enabled"`
 	CreatedAt      time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
+
+	// Optional directory-API credentials for the group picker (Okta SSWS token /
+	// Google service-account JSON in DirectorySecret; Google impersonation email
+	// in DirectoryAdmin). Never serialised; DirectoryConfigured tells the UI
+	// whether a secret is present without exposing it.
+	DirectorySecret     *string `db:"directory_secret" json:"-"`
+	DirectoryAdmin      *string `db:"directory_admin" json:"directory_admin,omitempty"`
+	DirectoryConfigured bool    `db:"directory_configured" json:"directory_configured"`
 }
 
 // SSODomain is a claimed email domain routing to a connection. Verified is
@@ -39,28 +47,41 @@ func (d SSODomain) Verified() bool { return d.VerifiedAt != nil }
 func (s *Service) CreateSSOConnection(c SSOConnection) (string, error) {
 	var id string
 	err := s.db.Get(&id, `
-		INSERT INTO sso_connection (organisation_id, name, protocol, issuer, tenant_id, client_id, client_secret, enabled)
-		VALUES ($1, $2, $3, $4, $5, $6, PGP_SYM_ENCRYPT($7, $8), $9)
+		INSERT INTO sso_connection (organisation_id, name, protocol, issuer, tenant_id, client_id, client_secret, directory_secret, directory_admin, enabled)
+		VALUES ($1, $2, $3, $4, $5, $6, PGP_SYM_ENCRYPT($7, $8),
+		        CASE WHEN $9 = '' THEN NULL ELSE PGP_SYM_ENCRYPT($9, $8) END, NULLIF($10, ''), $11)
 		RETURNING id
-	`, c.OrganisationID, c.Name, c.Protocol, c.Issuer, c.TenantID, c.ClientID, derefOr(c.ClientSecret), s.config.Database.EncryptionKey, c.Enabled)
+	`, c.OrganisationID, c.Name, c.Protocol, c.Issuer, c.TenantID, c.ClientID, derefOr(c.ClientSecret), s.config.Database.EncryptionKey,
+		derefOr(c.DirectorySecret), derefOr(c.DirectoryAdmin), c.Enabled)
 	return id, err
 }
 
 // UpdateSSOConnection updates a connection. The client secret is only re-written
 // when a non-nil value is supplied (so the UI can omit it to leave it unchanged).
+// UpdateSSOConnection updates a connection. Secrets (client + directory) are
+// only re-written when a non-empty value is supplied, so the UI can omit them to
+// leave them unchanged. directory_admin is always written (empty clears it).
 func (s *Service) UpdateSSOConnection(c SSOConnection) error {
+	dirSecret := derefOr(c.DirectorySecret)
 	if c.ClientSecret != nil {
 		_, err := s.db.Exec(`
 			UPDATE sso_connection
-			SET name=$1, issuer=$2, tenant_id=$3, client_id=$4, client_secret=PGP_SYM_ENCRYPT($5,$6), enabled=$7, updated_at=NOW()
-			WHERE id=$8 AND organisation_id=$9
-		`, c.Name, c.Issuer, c.TenantID, c.ClientID, *c.ClientSecret, s.config.Database.EncryptionKey, c.Enabled, c.ID, c.OrganisationID)
+			SET name=$1, issuer=$2, tenant_id=$3, client_id=$4, client_secret=PGP_SYM_ENCRYPT($5,$6),
+			    directory_secret=CASE WHEN $7 = '' THEN directory_secret ELSE PGP_SYM_ENCRYPT($7,$6) END,
+			    directory_admin=NULLIF($8, ''), enabled=$9, updated_at=NOW()
+			WHERE id=$10 AND organisation_id=$11
+		`, c.Name, c.Issuer, c.TenantID, c.ClientID, *c.ClientSecret, s.config.Database.EncryptionKey,
+			dirSecret, derefOr(c.DirectoryAdmin), c.Enabled, c.ID, c.OrganisationID)
 		return err
 	}
 	_, err := s.db.Exec(`
-		UPDATE sso_connection SET name=$1, issuer=$2, tenant_id=$3, client_id=$4, enabled=$5, updated_at=NOW()
-		WHERE id=$6 AND organisation_id=$7
-	`, c.Name, c.Issuer, c.TenantID, c.ClientID, c.Enabled, c.ID, c.OrganisationID)
+		UPDATE sso_connection
+		SET name=$1, issuer=$2, tenant_id=$3, client_id=$4,
+		    directory_secret=CASE WHEN $5 = '' THEN directory_secret ELSE PGP_SYM_ENCRYPT($5,$6) END,
+		    directory_admin=NULLIF($7, ''), enabled=$8, updated_at=NOW()
+		WHERE id=$9 AND organisation_id=$10
+	`, c.Name, c.Issuer, c.TenantID, c.ClientID, dirSecret, s.config.Database.EncryptionKey,
+		derefOr(c.DirectoryAdmin), c.Enabled, c.ID, c.OrganisationID)
 	return err
 }
 
@@ -68,7 +89,8 @@ func (s *Service) UpdateSSOConnection(c SSOConnection) error {
 func (s *Service) GetSSOConnectionsForOrg(orgID string) ([]SSOConnection, error) {
 	var out []SSOConnection
 	err := s.db.Select(&out, `
-		SELECT id, organisation_id, name, protocol, issuer, tenant_id, client_id, enabled, created_at, updated_at
+		SELECT id, organisation_id, name, protocol, issuer, tenant_id, client_id, enabled, created_at, updated_at,
+		       directory_admin, (directory_secret IS NOT NULL) AS directory_configured
 		FROM sso_connection WHERE organisation_id=$1 ORDER BY created_at
 	`, orgID)
 	return out, err
@@ -80,7 +102,10 @@ func (s *Service) GetSSOConnectionByID(id string) (*SSOConnection, error) {
 	var c SSOConnection
 	err := s.db.Get(&c, `
 		SELECT id, organisation_id, name, protocol, issuer, tenant_id, client_id,
-		       PGP_SYM_DECRYPT(client_secret, $2) AS client_secret, enabled, created_at, updated_at
+		       PGP_SYM_DECRYPT(client_secret, $2) AS client_secret,
+		       PGP_SYM_DECRYPT(directory_secret, $2) AS directory_secret,
+		       directory_admin, (directory_secret IS NOT NULL) AS directory_configured,
+		       enabled, created_at, updated_at
 		FROM sso_connection WHERE id=$1
 	`, id, s.config.Database.EncryptionKey)
 	if err == sql.ErrNoRows {

@@ -3,8 +3,8 @@ package listener
 import (
 	"net/http"
 
-	"flomation.app/sentinel/internal/mfa"
 	appmetrics "flomation.app/sentinel/internal/metrics"
+	"flomation.app/sentinel/internal/mfa"
 	"flomation.app/sentinel/internal/oidc"
 	"flomation.app/sentinel/internal/passkey"
 	"flomation.app/sentinel/internal/session"
@@ -128,6 +128,7 @@ func NewListener(config *config.Config, sec *security.Service, db *persistence.S
 	admin.POST("/connection/:id/domain", s.adminAddDomain)
 	admin.POST("/connection/:id/domain/:domainId/verify", s.adminVerifyDomain)
 	admin.DELETE("/connection/:id/domain/:domainId", s.adminDeleteDomain)
+	admin.GET("/connection/:id/groups", s.adminSearchGroups)
 
 	s.engine.NoRoute(s.staticAssets)
 

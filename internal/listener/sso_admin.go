@@ -64,6 +64,10 @@ type connectionInput struct {
 	ClientID       string  `json:"client_id"`
 	ClientSecret   *string `json:"client_secret"`
 	Enabled        bool    `json:"enabled"`
+	// Optional directory-API credentials for the group picker (Okta SSWS token /
+	// Google service-account JSON; Google impersonation email).
+	DirectorySecret *string `json:"directory_secret"`
+	DirectoryAdmin  *string `json:"directory_admin"`
 }
 
 func (in connectionInput) toModel() persistence.SSOConnection {
@@ -72,14 +76,16 @@ func (in connectionInput) toModel() persistence.SSOConnection {
 		protocol = "oidc"
 	}
 	return persistence.SSOConnection{
-		OrganisationID: in.OrganisationID,
-		Name:           in.Name,
-		Protocol:       protocol,
-		Issuer:         in.Issuer,
-		TenantID:       in.TenantID,
-		ClientID:       in.ClientID,
-		ClientSecret:   in.ClientSecret,
-		Enabled:        in.Enabled,
+		OrganisationID:  in.OrganisationID,
+		Name:            in.Name,
+		Protocol:        protocol,
+		Issuer:          in.Issuer,
+		TenantID:        in.TenantID,
+		ClientID:        in.ClientID,
+		ClientSecret:    in.ClientSecret,
+		Enabled:         in.Enabled,
+		DirectorySecret: in.DirectorySecret,
+		DirectoryAdmin:  in.DirectoryAdmin,
 	}
 }
 
