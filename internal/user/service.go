@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode"
 
 	"flomation.app/sentinel/internal/smtp"
 	log "github.com/sirupsen/logrus"
@@ -13,6 +14,43 @@ import (
 	"flomation.app/sentinel/internal/config"
 	"flomation.app/sentinel/internal/persistence"
 )
+
+// MinPasswordLength is the minimum number of characters a password must have.
+// Enforced server-side (the client-side hint in set_password.html mirrors it).
+const MinPasswordLength = 12
+
+// ValidatePassword enforces the account password policy: at least
+// MinPasswordLength characters, with at least one uppercase letter, one
+// lowercase letter and one digit. Returns a descriptive error when the password
+// does not meet the policy. This is the authoritative server-side check; the
+// browser hint in set_password.html must be kept in step with it.
+func ValidatePassword(password string) error {
+	if len([]rune(password)) < MinPasswordLength {
+		return fmt.Errorf("password must be at least %d characters long", MinPasswordLength)
+	}
+
+	var hasUpper, hasLower, hasNumber bool
+	for _, r := range password {
+		switch {
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsLower(r):
+			hasLower = true
+		case unicode.IsNumber(r):
+			hasNumber = true
+		}
+	}
+	if !hasUpper {
+		return errors.New("password must contain at least one uppercase letter")
+	}
+	if !hasLower {
+		return errors.New("password must contain at least one lowercase letter")
+	}
+	if !hasNumber {
+		return errors.New("password must contain at least one number")
+	}
+	return nil
+}
 
 var delays = [...]time.Duration{
 	time.Second,
@@ -65,6 +103,10 @@ func (s *Service) RegisterUser(username string, utm persistence.UTMParameters) (
 }
 
 func (s *Service) UpdatePassword(id string, password string) error {
+	if err := ValidatePassword(password); err != nil {
+		return err
+	}
+
 	u, err := s.database.GetUserByID(id)
 	if err != nil {
 		return err
