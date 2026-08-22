@@ -18,6 +18,11 @@ type RegisterRequest struct {
 	UTMTerm     string `json:"utm_term,omitempty"`
 	UTMContent  string `json:"utm_content,omitempty"`
 	UTMReferrer string `json:"utm_referrer,omitempty"`
+
+	// MarketingOptIn is the caller's assertion that the user agreed to
+	// marketing email. Callers that did not ask should omit it, which records
+	// the user as unasked rather than as having refused.
+	MarketingOptIn bool `json:"marketing_opt_in,omitempty"`
 }
 
 func (s *Service) registerUser(c *gin.Context) {
@@ -39,7 +44,13 @@ func (s *Service) registerUser(c *gin.Context) {
 		Referrer: request.UTMReferrer,
 	}
 
-	u, err := s.user.RegisterUser(request.Username, utm)
+	consent := persistence.MarketingConsent{
+		OptIn:   request.MarketingOptIn,
+		Source:  persistence.MarketingConsentSourceRegistrationAPI,
+		Version: persistence.MarketingConsentWordingSignupV1,
+	}
+
+	u, err := s.user.RegisterUser(request.Username, utm, consent)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -109,13 +120,20 @@ func (s *Service) getAccount(c *gin.Context) {
 
 	mfaEnabled, _ := s.mfa.IsEnrolled(userID)
 
+	// The marketing consent decision is surfaced so the product can seed its
+	// own copy when it first provisions the account, rather than asking a
+	// second time for something the user already answered at sign-up.
 	c.JSON(http.StatusOK, gin.H{
-		"id":           userID,
-		"username":     u.Username,
-		"display_name": u.DisplayName,
-		"created_on":   u.CreatedAt,
-		"locked":       u.Locked,
-		"mfa_enabled":  mfaEnabled,
+		"id":                        userID,
+		"username":                  u.Username,
+		"display_name":              u.DisplayName,
+		"created_on":                u.CreatedAt,
+		"locked":                    u.Locked,
+		"mfa_enabled":               mfaEnabled,
+		"marketing_opt_in":          u.MarketingOptIn,
+		"marketing_consent_at":      u.MarketingConsentAt,
+		"marketing_consent_source":  u.MarketingConsentSource,
+		"marketing_consent_version": u.MarketingConsentVersion,
 	})
 }
 

@@ -82,8 +82,8 @@ func New(config *config.Config, database *persistence.Service) *Service {
 // Database exposes the persistence layer for SSO account operations.
 func (s *Service) Database() *persistence.Service { return s.database }
 
-func (s *Service) RegisterUser(username string, utm persistence.UTMParameters) (*persistence.User, error) {
-	u, err := s.database.RegisterUser(username, utm)
+func (s *Service) RegisterUser(username string, utm persistence.UTMParameters, consent persistence.MarketingConsent) (*persistence.User, error) {
+	u, err := s.database.RegisterUser(username, utm, consent)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +218,12 @@ func (s *Service) UpdateDisplayName(id string, displayName string) error {
 }
 
 // RegisterUserSSO creates a user account without a password (SSO-only login).
+//
+// SSO sign-up never renders a registration form of ours, so there is nowhere to
+// put the marketing question and no decision to record — the consent is left
+// zero-valued (unasked, not refused) and the product asks later.
 func (s *Service) RegisterUserSSO(email, displayName string, utm persistence.UTMParameters) (*persistence.User, error) {
-	u, err := s.database.RegisterUser(email, utm)
+	u, err := s.database.RegisterUser(email, utm, persistence.MarketingConsent{})
 	if err != nil {
 		return nil, err
 	}

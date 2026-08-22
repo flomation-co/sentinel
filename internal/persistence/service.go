@@ -190,7 +190,11 @@ func (s *Service) configure() error {
 		    created_at,
 			verification_token,
 		    locked,
-		    failed_attempt
+		    failed_attempt,
+		    marketing_opt_in,
+		    marketing_consent_at,
+		    marketing_consent_source,
+		    marketing_consent_version
 		FROM
 		    "user"
 		WHERE
@@ -247,7 +251,11 @@ func (s *Service) configure() error {
 		    utm_campaign,
 		    utm_term,
 		    utm_content,
-		    utm_referrer
+		    utm_referrer,
+		    marketing_opt_in,
+		    marketing_consent_at,
+		    marketing_consent_source,
+		    marketing_consent_version
 		) VALUES (
 		    PGP_SYM_ENCRYPT(LOWER(:username), :key),
 		  	DIGEST(LOWER(:username), 'sha256'),
@@ -256,7 +264,11 @@ func (s *Service) configure() error {
 		    NULLIF(:utm_campaign, ''),
 		    NULLIF(:utm_term, ''),
 		    NULLIF(:utm_content, ''),
-		    NULLIF(:utm_referrer, '')
+		    NULLIF(:utm_referrer, ''),
+		    :marketing_opt_in,
+		    CASE WHEN :consent_asked THEN NOW() END,
+		    NULLIF(:marketing_consent_source, ''),
+		    NULLIF(:marketing_consent_version, '')
 		) RETURNING id;
 	`)
 	if err != nil {
