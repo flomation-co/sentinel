@@ -227,6 +227,79 @@
             display: none;
         }
 
+        /* Marketing consent row on the registration fragment. Deliberately
+           unticked by default — consent must be an affirmative action, so no
+           pre-selection and no styling that implies the box is already set. */
+        .consent-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 18px 0 6px;
+            padding: 12px 14px;
+            background: var(--primary-background-muted);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.15s ease;
+        }
+
+        .consent-row:hover {
+            border-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .consent-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            flex: 0 0 auto;
+            width: 18px;
+            height: 18px;
+            margin: 1px 0 0;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .consent-checkbox:checked {
+            background-color: var(--secondary-background);
+            border-color: var(--secondary-background);
+        }
+
+        .consent-checkbox:checked::after {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 1px;
+            width: 4px;
+            height: 9px;
+            border: solid #fff;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .consent-checkbox:focus-visible {
+            outline: none;
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 10px 3px var(--input-focus-glow);
+        }
+
+        .consent-text {
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--primary-font-colour);
+        }
+
+        .consent-subtext {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: var(--secondary-font-colour);
+        }
+
         input[type="submit"],
         input[type="button"] {
             padding: 12px 24px;

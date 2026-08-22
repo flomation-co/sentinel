@@ -448,7 +448,9 @@ func (s *Service) linkOrCreateSSOUser(provider string, info *oauthUserInfo, utm 
 		userID = existing.ID
 	} else {
 		// Create a new user — attribute the sign-up to the inbound campaign.
-		newUser, err := s.user.RegisterUser(info.Email, utm)
+		// There is no form of ours in an SSO sign-up, so the marketing question
+		// is not asked here; the product asks once they land.
+		newUser, err := s.user.RegisterUser(info.Email, utm, persistence.MarketingConsent{})
 		if err != nil {
 			return "", fmt.Errorf("register user: %w", err)
 		}

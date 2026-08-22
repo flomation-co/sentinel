@@ -10,6 +10,7 @@ import (
 	"flomation.app/sentinel/internal/security"
 
 	"flomation.app/sentinel/internal/assets"
+	"flomation.app/sentinel/internal/persistence"
 	"flomation.app/sentinel/internal/session"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -32,14 +33,14 @@ func (s *Service) checkNewDeviceFromContext(c *gin.Context, userID string) {
 }
 
 const (
-	fragmentEnterEmailAddress         = "email_address"
-	fragmentRegister                  = "register"
-	fragmentPassword                  = "password"
-	fragmentEnterPasskey              = "enter_passkey"
-	fragmentPasswordError             = "password_error"
-	fragmentSubmitPassword            = "submit_password"
-	fragmentSubmitMFA                 = "submit_mfa"
-	fragmentEnterMFA                  = "enter_mfa"
+	fragmentEnterEmailAddress = "email_address"
+	fragmentRegister          = "register"
+	fragmentPassword          = "password"
+	fragmentEnterPasskey      = "enter_passkey"
+	fragmentPasswordError     = "password_error"
+	fragmentSubmitPassword    = "submit_password"
+	fragmentSubmitMFA         = "submit_mfa"
+	fragmentEnterMFA          = "enter_mfa"
 	// fragmentEnterMFAForReset shares the TOTP-prompt shape with
 	// enter_mfa but uses reset-specific copy ("Continue resetting
 	// your password" instead of "Log in"), posts back with
@@ -499,7 +500,17 @@ func (s *Service) authenticate(c *gin.Context) {
 			}).Warn("unable to read session UTM parameters")
 		}
 
-		u, err := s.user.RegisterUser(email, utm)
+		// The sign-up form carries the marketing question, so this is the one
+		// registration path where a decision is genuinely recorded. An unticked
+		// box is a refusal, not an absence — Source is set either way so the
+		// two remain distinguishable downstream.
+		consent := persistence.MarketingConsent{
+			OptIn:   c.DefaultPostForm("marketing_opt_in", "") == "true",
+			Source:  persistence.MarketingConsentSourceRegistrationForm,
+			Version: persistence.MarketingConsentWordingSignupV1,
+		}
+
+		u, err := s.user.RegisterUser(email, utm, consent)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
