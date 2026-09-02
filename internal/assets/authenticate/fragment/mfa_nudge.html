@@ -1,0 +1,18 @@
+<div data-lang="mfa_nudge_title" class="subtitle">
+    Add a second step to your login
+</div>
+<div>
+    <input type="hidden" name="form_state" id="form_state" maxlength="255" value="mfa_nudge_enable"/>
+
+    <div data-lang="mfa_nudge_body" class="mfa_nudge_body">
+        A password on its own can be guessed, reused or phished. With an
+        authenticator app, a stolen password is not enough to reach your account.
+        It takes about a minute to set up.
+    </div>
+
+    <div>
+        <input type="submit" value="Enable MFA" data-lang="enable_mfa" class="button button-continue"/>
+    </div>
+    <a class="password-reset-link" data-lang="mfa_nudge_skip"
+       onclick="document.getElementById('form_state').value='mfa_nudge_skip'; document.getElementById('form').submit();">Continue without enhanced security</a>
+</div>

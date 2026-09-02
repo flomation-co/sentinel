@@ -52,7 +52,64 @@ const (
 	fragmentForgottenPassword         = "forgot_password"
 	fragmentSubmitForgottenPassword   = "submit_forgot_password"
 	fragmentForgottenPasswordComplete = "forgot_password_complete"
+
+	// The post-password prompt offering to turn MFA on. Two ways out:
+	// enable (finish the login, land on the MFA page) or skip (finish the
+	// login and go where the user was headed).
+	fragmentMFANudge       = "mfa_nudge"
+	fragmentMFANudgeEnable = "mfa_nudge_enable"
+	fragmentMFANudgeSkip   = "mfa_nudge_skip"
 )
+
+// mfaNudgeInterval is how long a decline is respected before the prompt
+// returns. Long enough not to nag, short enough that somebody who was busy
+// the first time gets asked again.
+const mfaNudgeInterval = 30 * 24 * time.Hour
+
+// shouldNudgeForMFA reports whether the post-password MFA prompt should be
+// shown to this user.
+//
+// Deliberately NOT a reason to skip: a linked SSO account. Those users keep a
+// usable password, so the password stays an MFA-free route into the account —
+// which is precisely what the prompt is for. The same goes for a registered
+// passkey, since reaching this branch at all means the user chose "use
+// password instead".
+//
+// Externally managed identities (organisation SAML, where the provider
+// enforces its own second factor and ours would be noise) belong here too, but
+// Sentinel has no such concept yet — there is no SAML or organisation-managed
+// account anywhere in this service. When that lands, this is where it goes.
+//
+// Any error answers false: a prompt is a courtesy, and a database hiccup must
+// never stand between a user with the right password and their account.
+func (s *Service) shouldNudgeForMFA(userID string) bool {
+	enrolled, err := s.mfa.IsEnrolled(userID)
+	if err != nil || enrolled {
+		return false
+	}
+
+	state, err := s.user.Database().GetMFANudgeState(userID)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Warn("unable to read MFA nudge state")
+		return false
+	}
+
+	return mfaNudgeDue(state, time.Now())
+}
+
+// mfaNudgeDue decides whether enough time has passed since the user last
+// declined. Split out from shouldNudgeForMFA so the cadence is testable
+// without a database or a clock.
+//
+// Never asked (no row, or a row that has never been dismissed) is due.
+func mfaNudgeDue(state *persistence.MFANudgeState, now time.Time) bool {
+	if state == nil || state.DismissedAt == nil {
+		return true
+	}
+	return now.Sub(*state.DismissedAt) > mfaNudgeInterval
+}
 
 func (s *Service) staticAssets(c *gin.Context) {
 	path := c.Request.URL.Path
@@ -617,6 +674,21 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
+		// No second factor. Offer one before finishing the login. The session
+		// parks in StateMFANudge rather than completing, so no token exists
+		// until the user answers.
+		if s.shouldNudgeForMFA(u.ID) {
+			if err := s.session.UpdateState(sessionID, session.StateMFANudge); err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Error("unable to set session state for MFA nudge")
+				fragment = fragmentPasswordError
+				break
+			}
+			fragment = fragmentMFANudge
+			break
+		}
+
 		if err := s.session.UpdateState(sessionID, session.StateComplete); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -646,6 +718,68 @@ func (s *Service) authenticate(c *gin.Context) {
 		}
 
 		s.checkNewDeviceFromContext(c, u.ID)
+		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
+		return
+
+	case fragmentMFANudgeEnable, fragmentMFANudgeSkip:
+		// validateState is a no-op, so the gate is here: only a session that
+		// actually got past the password may mint a token from this branch.
+		if sessionState != session.StateMFANudge {
+			log.WithFields(log.Fields{
+				"state": sessionState,
+			}).Warn("MFA nudge answered from an unexpected session state")
+			fragment = fragmentPasswordError
+			break
+		}
+
+		userID, err := s.session.GetSessionUserID(sessionID)
+		if err != nil || userID == nil {
+			fragment = fragmentPasswordError
+			break
+		}
+
+		// A decline is recorded before the login finishes, so the prompt is
+		// not repeated on the next login. Failing to record it is not worth
+		// blocking a valid login over — the worst case is being asked again.
+		if formState == fragmentMFANudgeSkip {
+			if err := s.user.Database().RecordMFANudgeDismissed(*userID); err != nil {
+				log.WithFields(log.Fields{
+					"error": err,
+				}).Warn("unable to record MFA nudge dismissal")
+			}
+		}
+
+		if err := s.session.UpdateState(sessionID, session.StateComplete); err != nil {
+			fragment = fragmentPasswordError
+			break
+		}
+
+		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("unable to create token after MFA nudge")
+			fragment = fragmentPasswordError
+			break
+		}
+
+		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		expiration := time.Now().Add(duration)
+		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
+			fragment = fragmentPasswordError
+			break
+		}
+
+		s.checkNewDeviceFromContext(c, *userID)
+
+		// Accepting sends the user to the MFA page to enrol; declining sends
+		// them where they were going. Either way the login is complete, so
+		// abandoning enrolment still leaves them logged in.
+		if formState == fragmentMFANudgeEnable {
+			c.Redirect(http.StatusFound, "/mfa")
+			return
+		}
 		c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 		return
 

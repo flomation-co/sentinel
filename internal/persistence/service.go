@@ -32,6 +32,8 @@ type Service struct {
 	stmtResetFailedAttempts          *sqlx.NamedStmt
 	stmtVerifyUser                   *sqlx.NamedStmt
 	stmtUpdateDisplayName            *sqlx.NamedStmt
+	stmtGetMFANudgeState             *sqlx.NamedStmt
+	stmtRecordMFANudgeDismissed      *sqlx.NamedStmt
 
 	stmtInsertSession           *sqlx.NamedStmt
 	stmtClearSession            *sqlx.NamedStmt
@@ -48,10 +50,10 @@ type Service struct {
 	stmtInsertPasswordReset    *sqlx.NamedStmt
 	stmtGetUserByPasswordToken *sqlx.NamedStmt
 
-	stmtCreateMFADevice       *sqlx.NamedStmt
-	stmtGetMFADeviceByUserID  *sqlx.NamedStmt
-	stmtEnableMFADevice       *sqlx.NamedStmt
-	stmtDeleteMFADevice       *sqlx.NamedStmt
+	stmtCreateMFADevice      *sqlx.NamedStmt
+	stmtGetMFADeviceByUserID *sqlx.NamedStmt
+	stmtEnableMFADevice      *sqlx.NamedStmt
+	stmtDeleteMFADevice      *sqlx.NamedStmt
 
 	stmtCheckKnownDevice  *sqlx.NamedStmt
 	stmtInsertKnownDevice *sqlx.NamedStmt
@@ -197,6 +199,32 @@ func (s *Service) configure() error {
 		    marketing_consent_version
 		FROM
 		    "user"
+		WHERE
+		    id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetMFANudgeState, err = s.db.PrepareNamed(`
+		SELECT
+		    mfa_nudge_dismissed_at,
+		    mfa_nudge_count
+		FROM
+		    "user"
+		WHERE
+		    id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtRecordMFANudgeDismissed, err = s.db.PrepareNamed(`
+		UPDATE
+		    "user"
+		SET
+		    mfa_nudge_dismissed_at = NOW(),
+		    mfa_nudge_count = mfa_nudge_count + 1
 		WHERE
 		    id = :id
 	`)
