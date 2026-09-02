@@ -316,3 +316,40 @@ func (s *Service) UpdateDisplayName(userID string, displayName string) error {
 
 	return err
 }
+
+// MFANudgeState is what the login flow needs to decide whether to offer the
+// "turn on MFA" step: when the user last declined, and how many times.
+type MFANudgeState struct {
+	DismissedAt *time.Time `db:"mfa_nudge_dismissed_at"`
+	Count       int        `db:"mfa_nudge_count"`
+}
+
+// GetMFANudgeState reads a user's MFA-prompt history. A user who has never
+// been asked comes back with a nil DismissedAt and a zero Count.
+func (s *Service) GetMFANudgeState(userID string) (*MFANudgeState, error) {
+	var state MFANudgeState
+
+	if err := s.stmtGetMFANudgeState.Get(&state, struct {
+		UserID string `db:"id"`
+	}{
+		UserID: userID,
+	}); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &state, nil
+}
+
+// RecordMFANudgeDismissed notes that the user declined the prompt, so the next
+// login does not ask again immediately.
+func (s *Service) RecordMFANudgeDismissed(userID string) error {
+	_, err := s.stmtRecordMFANudgeDismissed.Exec(struct {
+		UserID string `db:"id"`
+	}{
+		UserID: userID,
+	})
+	return err
+}
