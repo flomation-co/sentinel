@@ -1,52 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Passkeys — Flomation</title>
-    <link rel="icon" type="image/png" href="/assets/images/favicon.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Passkeys | Flomation</title>
+    <meta name="theme-color" content="#f6f4f8">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon.png">
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/sora-latin.woff2" crossorigin>
     <style>
+        @font-face {
+            font-family: 'Sora';
+            font-style: normal;
+            font-weight: 400 800;
+            font-display: swap;
+            src: url("/assets/fonts/sora-latin.woff2") format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        @font-face {
+            font-family: 'Sora';
+            font-style: normal;
+            font-weight: 400 800;
+            font-display: swap;
+            src: url("/assets/fonts/sora-latin-ext.woff2") format('woff2');
+            unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+        }
+
+        /* Same palette as the sign-in chrome, which is the same palette as the
+           marketing site. This page is standalone rather than assembled from
+           the header fragment, so the tokens are repeated here; they are the
+           literal values from the site's tokens.css, not an interpretation. */
         :root {
-            --background-colour: #161019;
-            --primary-foreground: #460070;
-            --primary-background: #33263a;
-            --secondary-background: #00aa9c;
-            --primary-font-colour: #fff;
-            --secondary-font-colour: #ae9fb9;
-            --card-bg: rgba(19, 19, 19, 0.85);
-            --card-border: rgba(255, 255, 255, 0.06);
-            --btn-primary-bg: var(--secondary-background);
-            --btn-primary-hover: #00c4b4;
-            --danger: rgba(248, 113, 113, 0.8);
+            --bg: #f6f4f8;
+            --surface: #fdfcfe;
+            --surface-2: #eae3ef;
+            --border: rgba(70, 45, 84, 0.12);
+            --border-2: rgba(70, 45, 84, 0.18);
+            --text: #342a38;
+            --soft: #524856;
+            --dim: #5c5260;
+            --violet: #460070;
+            --lilac: #6b3f80;
+            --teal: #2f6b64;
+            --grad-cta: linear-gradient(180deg, #5d3670, #460070);
+            --glow-cta: 0 6px 18px rgba(70, 0, 112, 0.22);
+            --glow-cta-strong: 0 10px 26px rgba(70, 0, 112, 0.34);
+            --lift-card: 0 1px 2px rgba(70, 45, 84, 0.05), 0 18px 48px -22px rgba(70, 45, 84, 0.34);
+            --danger: #a8212f;
+            --danger-wash: rgba(168, 33, 47, 0.07);
+            --danger-border: rgba(168, 33, 47, 0.18);
+            --font-heading: 'Sora', sans-serif;
+            /* Matches the marketing site's declaration exactly; see the note in
+               the authenticate header about the family name. */
+            --font-body: 'Hanken Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         html, body {
-            width: 100%; height: 100%;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 0.95em;
-            color: var(--primary-font-colour);
-            background: radial-gradient(at top left, var(--background-colour), var(--primary-background));
+            width: 100%;
+            min-height: 100%;
+            font-family: var(--font-body);
+            font-size: 15px;
+            color: var(--text);
+            background: var(--bg);
             -webkit-font-smoothing: antialiased;
         }
 
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
-            background-size: 24px 24px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
         .page-wrapper {
-            position: relative;
-            z-index: 1;
             display: flex;
             justify-content: center;
             padding: 60px 20px;
@@ -59,34 +82,35 @@
         }
 
         .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 16px;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             padding: 32px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--lift-card);
         }
 
         .logo {
             display: block;
-            height: 22px;
+            height: 26px;
+            width: auto;
             margin: 0 auto 24px;
         }
 
         h1 {
-            font-size: 20px;
+            font-family: var(--font-heading);
+            font-size: 21px;
             font-weight: 600;
+            letter-spacing: -0.015em;
             margin-bottom: 6px;
             text-align: center;
         }
 
         .subtitle {
-            font-size: 13px;
-            color: var(--secondary-font-colour);
+            font-size: 14px;
+            color: var(--soft);
             text-align: center;
             margin-bottom: 24px;
-            line-height: 1.5;
+            line-height: 1.55;
         }
 
         .btn {
@@ -95,53 +119,54 @@
             justify-content: center;
             gap: 8px;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: none;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
             width: 100%;
             text-align: center;
             letter-spacing: 0.01em;
         }
 
         .btn-primary {
-            background: var(--btn-primary-bg);
+            background: var(--grad-cta);
             color: #fff;
+            box-shadow: var(--glow-cta);
         }
 
         .btn-primary:hover {
-            background: var(--btn-primary-hover);
-            box-shadow: 0 4px 16px rgba(0, 170, 156, 0.3);
+            box-shadow: var(--glow-cta-strong);
             transform: translateY(-1px);
         }
 
         .btn-primary:active {
             transform: translateY(0);
-            box-shadow: none;
+            box-shadow: var(--glow-cta);
         }
 
         .btn-danger {
-            background: rgba(248, 113, 113, 0.08);
+            background: transparent;
             color: var(--danger);
-            border: 1px solid rgba(248, 113, 113, 0.15);
-            padding: 6px 14px;
-            font-size: 12px;
+            border: 1px solid var(--danger-border);
+            padding: 7px 14px;
+            font-size: 13px;
             font-weight: 500;
             width: auto;
         }
 
         .btn-danger:hover {
-            background: rgba(248, 113, 113, 0.15);
+            background: var(--danger-wash);
+            border-color: rgba(168, 33, 47, 0.34);
         }
 
         .btn-back {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--secondary-font-colour);
-            border: 1px solid var(--card-border);
-            font-size: 13px;
+            background: transparent;
+            color: var(--soft);
+            border: 1px solid var(--border-2);
+            font-size: 14px;
             font-weight: 500;
             text-decoration: none;
             width: auto;
@@ -149,17 +174,18 @@
         }
 
         .btn-back:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--primary-font-colour);
+            background: rgba(222, 209, 229, 0.36);
+            color: var(--text);
         }
 
         #status {
             margin: 12px 0;
             font-size: 13px;
             text-align: center;
+            line-height: 1.5;
         }
 
-        .status-ok { color: var(--secondary-background); }
+        .status-ok { color: var(--teal); }
         .status-err { color: var(--danger); }
 
         .cred-list {
@@ -174,16 +200,16 @@
             align-items: center;
             gap: 12px;
             padding: 14px 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
+            background: rgba(234, 227, 239, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 12px;
         }
 
         .cred-icon {
             width: 36px; height: 36px;
-            border-radius: 8px;
-            background: rgba(0, 170, 156, 0.12);
-            color: var(--secondary-background);
+            border-radius: 10px;
+            background: rgba(47, 107, 100, 0.12);
+            color: var(--teal);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -191,14 +217,14 @@
         }
 
         .cred-info { flex: 1; min-width: 0; }
-        .cred-name { font-size: 14px; font-weight: 500; }
-        .cred-meta { font-size: 12px; color: var(--secondary-font-colour); margin-top: 3px; }
+        .cred-name { font-size: 14px; font-weight: 600; }
+        .cred-meta { font-size: 12px; color: var(--dim); margin-top: 3px; }
 
         .empty {
             text-align: center;
             padding: 24px 0;
-            color: var(--secondary-font-colour);
-            font-size: 13px;
+            color: var(--dim);
+            font-size: 14px;
         }
 
         .footer-links {
@@ -209,19 +235,23 @@
         }
 
         .footer-links a {
-            color: var(--secondary-font-colour);
+            color: var(--dim);
             text-decoration: none;
-            font-size: 12px;
+            font-size: 13px;
             transition: color 0.15s ease;
         }
 
         .footer-links a:hover {
-            color: var(--secondary-background);
+            color: var(--violet);
         }
 
         @media (max-width: 576px) {
             .card { padding: 24px 18px; }
             .page-wrapper { padding: 30px 12px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn:hover { transform: none; }
         }
     </style>
 </head>
@@ -229,7 +259,7 @@
 <div class="page-wrapper">
     <div class="container">
         <div class="card">
-            <img src="/assets/images/flomation-wordtype-white.png" alt="Flomation" class="logo" onerror="this.style.display='none'">
+            <img src="/assets/images/flomation-wordmark-ink.png" alt="Flomation" class="logo" width="900" height="252">
 
             <h1>Passkeys</h1>
             <p class="subtitle">Sign in with your fingerprint, face, or security key.<br>Passkeys are phishing-resistant and don't require a password.</p>

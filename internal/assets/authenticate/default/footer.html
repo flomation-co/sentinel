@@ -7,6 +7,7 @@
                 <li><a href="https://www.flomation.co/privacy/" target="_blank" title="Privacy Policy" data-lang="privacy">Privacy</a></li>
             </ul>
         </div>
+        </div>
     </div>
 
     <script>
@@ -20,6 +21,12 @@
             document.body.style.background = "transparent"
             container.classList.remove("authenticate_container_small");
             container.classList.add("authenticate_container_full");
+            // The head sets this before first paint so the art panel never
+            // flashes. Repeated here because that check and this one can
+            // disagree: a same-origin frame satisfies both, but the head uses
+            // window.top and this uses window.parent, so a nested frame is
+            // embedded either way and the layout must follow whichever fired.
+            document.documentElement.setAttribute("data-embedded", "true");
         }
 
         function updateParentSize() {

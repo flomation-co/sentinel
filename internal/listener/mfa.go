@@ -34,7 +34,7 @@ func (s *Service) mfaManage(c *gin.Context) {
 				       pattern="[0-9]{6}" inputmode="numeric" class="input_bg input_mfa_single" autofocus
 				       oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
 			</div>
-			<input type="submit" value="Disable MFA" class="button button-continue" style="background-color: #be0000;" onclick="this.form.action='/mfa/disable'"/>
+			<input type="submit" value="Disable MFA" class="button button-danger" onclick="this.form.action='/mfa/disable'"/>
 		</div>`
 	} else {
 		content = `<div data-lang="mfa_manage">
@@ -255,9 +255,8 @@ func (s *Service) wrapMFAPage(content string) string {
 
 	// The header opens a <form> and the footer closes it.
 	// Replace the session placeholder since we're not in a session flow.
+	// The header's asset URLs are root-absolute, so nothing needs rewriting
+	// for the nested /mfa/* paths the way it did when they were relative.
 	h := strings.ReplaceAll(string(header), "$$SESSION_ID$$", "")
-	// Fix relative asset paths for non-root pages like /mfa/*
-	h = strings.ReplaceAll(h, `"assets/`, `"/assets/`)
-	h = strings.ReplaceAll(h, `href="assets/`, `href="/assets/`)
 	return h + content + string(footer)
 }

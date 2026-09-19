@@ -3,6 +3,7 @@ package listener
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -111,6 +112,26 @@ func mfaNudgeDue(state *persistence.MFANudgeState, now time.Time) bool {
 	return now.Sub(*state.DismissedAt) > mfaNudgeInterval
 }
 
+// staticContentTypes gives the embedded assets an explicit media type.
+//
+// http.DetectContentType sniffs the bytes, which is wrong for two of the
+// things we serve: an SVG sniffs as text/xml, and a browser will not paint an
+// <img> whose type is not image/svg+xml, while a woff2 sniffs as
+// application/octet-stream. Naming the type per extension is both correct and
+// cheaper than sniffing.
+var staticContentTypes = map[string]string{
+	".css":   "text/css; charset=utf-8",
+	".ico":   "image/x-icon",
+	".jpeg":  "image/jpeg",
+	".jpg":   "image/jpeg",
+	".js":    "text/javascript; charset=utf-8",
+	".png":   "image/png",
+	".svg":   "image/svg+xml",
+	".webp":  "image/webp",
+	".woff":  "font/woff",
+	".woff2": "font/woff2",
+}
+
 func (s *Service) staticAssets(c *gin.Context) {
 	path := c.Request.URL.Path
 	if !strings.HasPrefix(path, "/assets") {
@@ -129,7 +150,16 @@ func (s *Service) staticAssets(c *gin.Context) {
 		return
 	}
 
-	c.Data(http.StatusOK, http.DetectContentType(b), b)
+	contentType, ok := staticContentTypes[strings.ToLower(filepath.Ext(fileName))]
+	if !ok {
+		contentType = http.DetectContentType(b)
+	}
+
+	// These are embedded in the binary, so a given URL's bytes only change on
+	// deploy. Without this the wordmark and both font files are re-fetched on
+	// every step of the sign-in flow.
+	c.Header("Cache-Control", "public, max-age=86400")
+	c.Data(http.StatusOK, contentType, b)
 }
 
 // handleResetMFA validates a TOTP code submitted from the MFA-for-
