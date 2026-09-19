@@ -105,7 +105,7 @@ func TestIssueChallengedSessionKeepsTokenAndCookieInStep(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 
-	life := claims.ExpiresAt.Time.Sub(claims.IssuedAt.Time)
+	life := claims.ExpiresAt.Sub(claims.IssuedAt.Time)
 	if want := time.Duration(week) * time.Second; absDuration(life-want) > 2*time.Second {
 		t.Errorf("token lives %s, want %s", life, want)
 	}

@@ -92,7 +92,7 @@ func (s *Service) RegisterUser(username string, utm persistence.UTMParameters, c
 		"user": u.VerificationToken,
 	}).Info("sending verification email")
 	if u.VerificationToken != nil {
-		if err := s.smtp.SendTemplatedEmail(username, "Welcome to Flomation", "Continue setting up your account", "Thanks for signing up! Please set your password so we can keep your account safe and get you started.", "Set Password", fmt.Sprintf("%v/verify?token=%v", s.config.Listener.URL, *u.VerificationToken)); err != nil {
+		if err := s.smtp.SendTemplatedEmail(username, "Welcome to Flomation", "Continue setting up your account", "Thanks for signing up! Please set your password so we can keep your account safe and get you started.", nil, "Set Password", fmt.Sprintf("%v/verify?token=%v", s.config.Listener.URL, *u.VerificationToken)); err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
 			}).Warn("unable to send verification email - registration will continue without it")
@@ -120,7 +120,7 @@ func (s *Service) UpdatePassword(id string, password string) error {
 		return err
 	}
 
-	if err := s.smtp.SendTemplatedEmail(u.Username, "Your password has been reset", "Your password has been reset", "The password on your account has been updated", "Login", fmt.Sprintf("%v", s.config.Security.LoginRedirect)); err != nil {
+	if err := s.smtp.SendTemplatedEmail(u.Username, "Your password has been reset", "Your password has been reset", "The password on your account has been updated", nil, "Login", fmt.Sprintf("%v", s.config.Security.LoginRedirect)); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Warn("unable to send password reset confirmation email")
@@ -206,7 +206,7 @@ func (s *Service) GeneratePasswordReset(id string) error {
 		return err
 	}
 
-	if err := s.smtp.SendTemplatedEmail(u.Username, "Reset your password", "Continue resetting your password", "A password reset has been requested on your account, use the button below to reset your password", "Reset Password", fmt.Sprintf("%v/password?token=%v", s.config.Listener.URL, *token)); err != nil {
+	if err := s.smtp.SendTemplatedEmail(u.Username, "Reset your password", "Continue resetting your password", "A password reset has been requested on your account, use the button below to reset your password", nil, "Reset Password", fmt.Sprintf("%v/password?token=%v", s.config.Listener.URL, *token)); err != nil {
 		return err
 	}
 
@@ -301,25 +301,28 @@ func (s *Service) CheckNewDevice(userID, ipAddress, userAgent, location string) 
 		locationInfo = "Unknown location"
 	}
 
-	message := fmt.Sprintf(
-		"We detected a sign-in to your account from a new device or location.<br><br>"+
-			"<strong>IP Address:</strong> %s<br>"+
-			"<strong>Location:</strong> %s<br>"+
-			"<strong>Device:</strong> %s<br>"+
-			"<strong>Time:</strong> %s<br><br>"+
-			"If this was you, no further action is required. If you do not recognise this activity, "+
-			"please reset your password immediately.",
-		ipAddress,
-		locationInfo,
-		userAgent,
-		time.Now().UTC().Format(time.RFC1123),
-	)
+	// The device is the request's User-Agent, which is whatever the client
+	// chose to send. It used to be interpolated into a string of HTML that the
+	// template then rendered unescaped, so it could carry arbitrary markup into
+	// the very email warning the user about the sign-in. Passed as data, the
+	// template escapes it like anything else.
+	message := "We detected a sign-in to your account from a new device or location. " +
+		"If this was you, no further action is required. If you do not recognise " +
+		"this activity, please reset your password immediately."
+
+	details := []smtp.EmailDetail{
+		{Label: "IP Address", Value: ipAddress},
+		{Label: "Location", Value: locationInfo},
+		{Label: "Device", Value: userAgent},
+		{Label: "Time", Value: time.Now().UTC().Format(time.RFC1123)},
+	}
 
 	if err := s.smtp.SendTemplatedEmail(
 		u.Username,
 		"New sign-in to your Flomation account",
 		"New device sign-in detected",
 		message,
+		details,
 		"Review Account",
 		fmt.Sprintf("%v/profile", s.config.Security.LoginRedirect),
 	); err != nil {

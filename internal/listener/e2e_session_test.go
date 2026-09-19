@@ -48,7 +48,7 @@ func TestRealConfigYieldsSevenDays(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 
-	life := claims.ExpiresAt.Time.Sub(claims.IssuedAt.Time)
+	life := claims.ExpiresAt.Sub(claims.IssuedAt.Time)
 	t.Logf("challenged token lifetime from config.json: %s", life)
 	if life < 167*time.Hour || life > 169*time.Hour {
 		t.Errorf("lifetime %s, want about 7 days", life)
