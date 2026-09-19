@@ -156,3 +156,51 @@ func TestFragmentsCarryNoDarkSchemeColours(t *testing.T) {
 		}
 	}
 }
+
+var (
+	classAttr     = regexp.MustCompile(`class="([^"]*)"`)
+	cssClassNames = regexp.MustCompile(`\.([A-Za-z_][\w-]*)`)
+)
+
+// jsOnlyClasses are referenced by scripts rather than by the stylesheet, so
+// they are expected to have no rule of their own.
+var jsOnlyClasses = map[string]bool{
+	"password-input": true, // togglePasswordVisibility finds the input by it
+	"input_bg":       true, // legacy hook, styled only for the cursor
+}
+
+// Every class a template uses must have a rule in the header stylesheet.
+//
+// The stylesheet is one big block, so a rewrite can drop a rule without
+// anything failing: the class stays in the fragment, the selector no longer
+// matches, and the element quietly falls back to browser defaults. That is how
+// the registration consent row lost its styling and became a bare checkbox.
+func TestEveryTemplateClassIsStyled(t *testing.T) {
+	header, err := assets.Fragments.ReadFile("authenticate/default/header.html")
+	if err != nil {
+		t.Fatalf("read header: %v", err)
+	}
+	css := string(header)
+	css = css[strings.Index(css, "<style>"):strings.Index(css, "</style>")]
+	css = cssComment.ReplaceAllString(css, "")
+
+	styled := map[string]bool{}
+	for _, m := range cssClassNames.FindAllStringSubmatch(css, -1) {
+		styled[m[1]] = true
+	}
+
+	for name, body := range templates(t) {
+		// The passkey page and the header carry their own stylesheets.
+		if strings.HasPrefix(name, "passkey/") || strings.HasSuffix(name, "default/header.html") {
+			continue
+		}
+		for _, m := range classAttr.FindAllStringSubmatch(body, -1) {
+			for _, class := range strings.Fields(m[1]) {
+				if styled[class] || jsOnlyClasses[class] {
+					continue
+				}
+				t.Errorf("%s uses class %q, which no rule in the header stylesheet matches", name, class)
+			}
+		}
+	}
+}
