@@ -337,7 +337,7 @@ func (s *Service) setPassword(c *gin.Context) {
 		return
 	}
 
-	token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+	_, err = s.issueChallengedSession(c, *userID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -345,8 +345,6 @@ func (s *Service) setPassword(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-
-	c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 
 	c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 }
@@ -680,6 +678,19 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
+		// Deliberately NOT issueChallengedSession.
+		//
+		// Nothing has been proved here. The user has given an email address and
+		// has not yet shown they can receive anything at it, so this session
+		// stays on the short, unchallenged lifetime; they reach the longer one
+		// the first time they actually log in.
+		//
+		// The mismatched lifetimes below are pre-existing and left alone: the
+		// token is good for Expiration while the cookie carrying it lasts an
+		// hour, so in practice the session ends after the hour. Making them
+		// agree means either lengthening the cookie, which is the wrong
+		// direction for an unproved address, or shortening the token, which is
+		// right but is a change nobody asked for. Worth settling separately.
 		token, err := s.token.Create(u.ID, int64(s.config.Security.Cookie.Expiration))
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -689,7 +700,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		c.SetCookie("flomation-token", *token, security.DefaultTokenExpirationSeconds, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		c.SetCookie(authCookie, *token, security.DefaultTokenExpirationSeconds, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
@@ -785,7 +796,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		token, err := s.token.Create(u.ID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, u.ID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -794,8 +805,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			log.WithFields(log.Fields{
@@ -842,7 +855,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, *userID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -851,8 +864,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			fragment = fragmentPasswordError
@@ -894,14 +909,16 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, *userID)
 		if err != nil {
 			fragment = fragmentPasswordError
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			fragment = fragmentPasswordError
@@ -949,7 +966,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, *userID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -957,9 +974,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			log.WithFields(log.Fields{
