@@ -1,10 +1,13 @@
 package listener
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"flomation.app/sentinel/internal/geo"
@@ -155,11 +158,66 @@ func (s *Service) staticAssets(c *gin.Context) {
 		contentType = http.DetectContentType(b)
 	}
 
-	// These are embedded in the binary, so a given URL's bytes only change on
-	// deploy. Without this the wordmark and both font files are re-fetched on
-	// every step of the sign-in flow.
-	c.Header("Cache-Control", "public, max-age=86400")
+	// Validate rather than expire.
+	//
+	// These URLs carry no content hash, so a far-future max-age means a
+	// changed asset is invisible to anyone who has already loaded the old one
+	// until their cache lapses. That is not hypothetical: a day-long max-age
+	// here left a corrected image unseen behind a stale copy.
+	//
+	// no-cache does not mean "do not store", it means "ask before using". The
+	// browser still keeps the bytes and still skips the download; it just
+	// spends one conditional request confirming they are current, and a
+	// deployed change is picked up at once.
+	etag := staticETag(fileName, b)
+	c.Header("ETag", etag)
+	c.Header("Cache-Control", "no-cache")
+
+	if matchesETag(c.GetHeader("If-None-Match"), etag) {
+		// AbortWithStatus rather than Status: gin buffers the code until
+		// something writes, and a 304 has no body to trigger that, so a plain
+		// Status here leaves the response as a 200 with nothing in it.
+		c.AbortWithStatus(http.StatusNotModified)
+		return
+	}
+
 	c.Data(http.StatusOK, contentType, b)
+}
+
+// staticETags memoises the digests. The assets are embedded, so a given path's
+// bytes cannot change while the process is alive and the hash is worth
+// computing once rather than on every request.
+var staticETags sync.Map
+
+func staticETag(name string, b []byte) string {
+	if v, ok := staticETags.Load(name); ok {
+		return v.(string)
+	}
+	sum := sha256.Sum256(b)
+	etag := `"` + hex.EncodeToString(sum[:16]) + `"`
+	staticETags.Store(name, etag)
+	return etag
+}
+
+// matchesETag reports whether an If-None-Match header covers etag.
+//
+// The header is a comma-separated list, may be "*", and entries may carry the
+// weak validator prefix, which we ignore: our tags are byte-exact, so a weak
+// comparison and a strong one agree.
+func matchesETag(header, etag string) bool {
+	if header == "" {
+		return false
+	}
+	for _, candidate := range strings.Split(header, ",") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "*" {
+			return true
+		}
+		if strings.TrimPrefix(candidate, "W/") == etag {
+			return true
+		}
+	}
+	return false
 }
 
 // handleResetMFA validates a TOTP code submitted from the MFA-for-
