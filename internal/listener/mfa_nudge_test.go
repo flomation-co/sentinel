@@ -1,6 +1,8 @@
 package listener
 
 import (
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -62,7 +64,17 @@ func TestMFANudgeFragment(t *testing.T) {
 	if !strings.Contains(html, `class="button button-continue"`) {
 		t.Error("Enable MFA should be the primary button")
 	}
-	if !strings.Contains(html, `class="password-reset-link"`) {
-		t.Error("the decline should use the subdued link style")
+	// Matched as a class rather than as the whole attribute: the decline may
+	// carry layout classes alongside the link style, and the thing being
+	// asserted is that it looks like a link and not like a second button.
+	decline := regexp.MustCompile(`<a[^>]*class="([^"]*)"`).FindStringSubmatch(html)
+	if decline == nil {
+		t.Fatal("no decline link in the fragment at all")
+	}
+	if !slices.Contains(strings.Fields(decline[1]), "password-reset-link") {
+		t.Errorf("the decline should use the subdued link style, got class %q", decline[1])
+	}
+	if strings.Contains(decline[1], "button") {
+		t.Errorf("the decline is styled as a button (%q); it must not compete with Enable MFA", decline[1])
 	}
 }

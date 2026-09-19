@@ -227,17 +227,37 @@ func (s *Service) sendSMTPEmail(recipients []string, subject string, body string
 	return nil
 }
 
-func (s *Service) SendTemplatedEmail(to string, subject string, header string, message string, buttonText string, buttonUrl string) error {
+// EmailDetail is one label/value row in a templated email.
+//
+// It exists so a caller with data to show never has to build markup. Both
+// halves are escaped by the template like any other field.
+type EmailDetail struct {
+	Label string
+	Value string
+}
+
+// SendTemplatedEmail renders the standard email shell and sends it.
+//
+// message is plain text and is escaped. Callers that need to present data --
+// an IP address, a device, a location -- pass it as details rather than as
+// markup inside message.
+//
+// There was a "safe" template function here that wrapped message in
+// template.HTML so callers could pass their own markup. The new-device
+// notification used it to lay out its fields, and interpolated the request's
+// User-Agent straight into that markup. A User-Agent is whatever the client
+// sends, so anyone able to log in as a user could write arbitrary HTML into
+// the very email warning that user their account had been signed into, in a
+// message genuinely from us and passing our SPF and DKIM. Escaping everything
+// and giving callers a structured way to show data makes that impossible
+// rather than merely absent.
+func (s *Service) SendTemplatedEmail(to string, subject string, header string, message string, details []EmailDetail, buttonText string, buttonUrl string) error {
 	b, err := assets.Email.ReadFile("email/default_template.html")
 	if err != nil {
 		return err
 	}
 
-	// Register a "safe" function so the template can render server-controlled
-	// HTML without calling template.HTML() in Go code (which Semgrep flags).
-	tmpl, err := template.New("main").Funcs(template.FuncMap{
-		"safe": func(s string) template.HTML { return template.HTML(s) }, // #nosec G203
-	}).Parse(string(b))
+	tmpl, err := template.New("main").Parse(string(b))
 	if err != nil {
 		return err
 	}
@@ -248,6 +268,7 @@ func (s *Service) SendTemplatedEmail(to string, subject string, header string, m
 	if err := tmpl.Execute(&buf, struct {
 		Header          string
 		Message         string
+		Details         []EmailDetail
 		ButtonText      string
 		ButtonURL       string
 		TransactionID   string
@@ -255,6 +276,7 @@ func (s *Service) SendTemplatedEmail(to string, subject string, header string, m
 	}{
 		Header:          header,
 		Message:         message,
+		Details:         details,
 		ButtonText:      buttonText,
 		ButtonURL:       buttonUrl,
 		TransactionID:   transactionID,

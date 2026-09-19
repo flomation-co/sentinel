@@ -37,6 +37,6 @@ func TestGenericEmail(t *testing.T) {
 		},
 	})
 
-	err := s.SendTemplatedEmail("hello@flomation.co", "Test Email", "Testing Flomation Emails", "This is just a simple test of the Flomation Sentinel Email service - please ignore", "Open", "https://www.flomation.co")
+	err := s.SendTemplatedEmail("hello@flomation.co", "Test Email", "Testing Flomation Emails", "This is just a simple test of the Flomation Sentinel Email service - please ignore", nil, "Open", "https://www.flomation.co")
 	Expect(err).To(BeNil())
 }

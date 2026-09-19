@@ -1,9 +1,13 @@
 package listener
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"flomation.app/sentinel/internal/geo"
@@ -111,6 +115,26 @@ func mfaNudgeDue(state *persistence.MFANudgeState, now time.Time) bool {
 	return now.Sub(*state.DismissedAt) > mfaNudgeInterval
 }
 
+// staticContentTypes gives the embedded assets an explicit media type.
+//
+// http.DetectContentType sniffs the bytes, which is wrong for two of the
+// things we serve: an SVG sniffs as text/xml, and a browser will not paint an
+// <img> whose type is not image/svg+xml, while a woff2 sniffs as
+// application/octet-stream. Naming the type per extension is both correct and
+// cheaper than sniffing.
+var staticContentTypes = map[string]string{
+	".css":   "text/css; charset=utf-8",
+	".ico":   "image/x-icon",
+	".jpeg":  "image/jpeg",
+	".jpg":   "image/jpeg",
+	".js":    "text/javascript; charset=utf-8",
+	".png":   "image/png",
+	".svg":   "image/svg+xml",
+	".webp":  "image/webp",
+	".woff":  "font/woff",
+	".woff2": "font/woff2",
+}
+
 func (s *Service) staticAssets(c *gin.Context) {
 	path := c.Request.URL.Path
 	if !strings.HasPrefix(path, "/assets") {
@@ -129,7 +153,71 @@ func (s *Service) staticAssets(c *gin.Context) {
 		return
 	}
 
-	c.Data(http.StatusOK, http.DetectContentType(b), b)
+	contentType, ok := staticContentTypes[strings.ToLower(filepath.Ext(fileName))]
+	if !ok {
+		contentType = http.DetectContentType(b)
+	}
+
+	// Validate rather than expire.
+	//
+	// These URLs carry no content hash, so a far-future max-age means a
+	// changed asset is invisible to anyone who has already loaded the old one
+	// until their cache lapses. That is not hypothetical: a day-long max-age
+	// here left a corrected image unseen behind a stale copy.
+	//
+	// no-cache does not mean "do not store", it means "ask before using". The
+	// browser still keeps the bytes and still skips the download; it just
+	// spends one conditional request confirming they are current, and a
+	// deployed change is picked up at once.
+	etag := staticETag(fileName, b)
+	c.Header("ETag", etag)
+	c.Header("Cache-Control", "no-cache")
+
+	if matchesETag(c.GetHeader("If-None-Match"), etag) {
+		// AbortWithStatus rather than Status: gin buffers the code until
+		// something writes, and a 304 has no body to trigger that, so a plain
+		// Status here leaves the response as a 200 with nothing in it.
+		c.AbortWithStatus(http.StatusNotModified)
+		return
+	}
+
+	c.Data(http.StatusOK, contentType, b)
+}
+
+// staticETags memoises the digests. The assets are embedded, so a given path's
+// bytes cannot change while the process is alive and the hash is worth
+// computing once rather than on every request.
+var staticETags sync.Map
+
+func staticETag(name string, b []byte) string {
+	if v, ok := staticETags.Load(name); ok {
+		return v.(string)
+	}
+	sum := sha256.Sum256(b)
+	etag := `"` + hex.EncodeToString(sum[:16]) + `"`
+	staticETags.Store(name, etag)
+	return etag
+}
+
+// matchesETag reports whether an If-None-Match header covers etag.
+//
+// The header is a comma-separated list, may be "*", and entries may carry the
+// weak validator prefix, which we ignore: our tags are byte-exact, so a weak
+// comparison and a strong one agree.
+func matchesETag(header, etag string) bool {
+	if header == "" {
+		return false
+	}
+	for _, candidate := range strings.Split(header, ",") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "*" {
+			return true
+		}
+		if strings.TrimPrefix(candidate, "W/") == etag {
+			return true
+		}
+	}
+	return false
 }
 
 // handleResetMFA validates a TOTP code submitted from the MFA-for-
@@ -249,7 +337,7 @@ func (s *Service) setPassword(c *gin.Context) {
 		return
 	}
 
-	token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+	_, err = s.issueChallengedSession(c, *userID)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
@@ -257,8 +345,6 @@ func (s *Service) setPassword(c *gin.Context) {
 		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-
-	c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 
 	c.Redirect(http.StatusFound, s.getRedirectURL(sessionID))
 }
@@ -592,6 +678,19 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
+		// Deliberately NOT issueChallengedSession.
+		//
+		// Nothing has been proved here. The user has given an email address and
+		// has not yet shown they can receive anything at it, so this session
+		// stays on the short, unchallenged lifetime; they reach the longer one
+		// the first time they actually log in.
+		//
+		// The mismatched lifetimes below are pre-existing and left alone: the
+		// token is good for Expiration while the cookie carrying it lasts an
+		// hour, so in practice the session ends after the hour. Making them
+		// agree means either lengthening the cookie, which is the wrong
+		// direction for an unproved address, or shortening the token, which is
+		// right but is a change nobody asked for. Worth settling separately.
 		token, err := s.token.Create(u.ID, int64(s.config.Security.Cookie.Expiration))
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -601,7 +700,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		c.SetCookie("flomation-token", *token, security.DefaultTokenExpirationSeconds, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
+		c.SetCookie(authCookie, *token, security.DefaultTokenExpirationSeconds, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
@@ -697,7 +796,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		token, err := s.token.Create(u.ID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, u.ID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -706,8 +805,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			log.WithFields(log.Fields{
@@ -754,7 +855,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, *userID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -763,8 +864,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			fragment = fragmentPasswordError
@@ -806,14 +909,16 @@ func (s *Service) authenticate(c *gin.Context) {
 			break
 		}
 
-		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, *userID)
 		if err != nil {
 			fragment = fragmentPasswordError
 			break
 		}
 
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			fragment = fragmentPasswordError
@@ -861,7 +966,7 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
-		token, err := s.token.Create(*userID, int64(s.config.Security.Cookie.Expiration))
+		_, err = s.issueChallengedSession(c, *userID)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err,
@@ -869,9 +974,10 @@ func (s *Service) authenticate(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-
-		c.SetCookie("flomation-token", *token, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
-		duration := time.Duration(s.config.Security.Cookie.Expiration) * time.Second
+		// The session row records the same login, so it carries the same
+		// lifetime. Nothing gates on it today, but a row that disagrees with
+		// the token it was issued beside is a misleading thing to read.
+		duration := time.Duration(s.challengedSessionExpiry()) * time.Second
 		expiration := time.Now().Add(duration)
 		if err := s.session.UpdateStateExpiration(sessionID, expiration); err != nil {
 			log.WithFields(log.Fields{

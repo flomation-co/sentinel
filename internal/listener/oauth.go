@@ -404,15 +404,13 @@ func (s *Service) oauthCallback(c *gin.Context) {
 		return
 	}
 
-	// Issue JWT and set cookie.
-	jwtToken, err := s.token.Create(userID, int64(s.config.Security.Cookie.Expiration))
-	if err != nil {
+	// Issue JWT and set cookie. The provider has just signed the user in, so
+	// this is a challenged session.
+	if _, err := s.issueChallengedSession(c, userID); err != nil {
 		log.WithField("error", err).Error("unable to create JWT")
 		c.String(http.StatusInternalServerError, "Authentication failed")
 		return
 	}
-
-	c.SetCookie("flomation-token", *jwtToken, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 
 	redirectURL := "/"
 	if s.config.Security.LoginRedirect != nil {
