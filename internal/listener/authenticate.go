@@ -593,6 +593,22 @@ func (s *Service) authenticate(c *gin.Context) {
 			return
 		}
 
+		// Home Realm Discovery: if the email's domain is claimed by a verified,
+		// enabled SSO connection, hand off to the IdP instead of prompting for a
+		// password — EXCEPT org admins of that connection's org, who keep the
+		// password/MFA flow as a self-serve break-glass so a broken SSO
+		// connection can't lock them out. New (JIT) users are never admins, so
+		// they still go to SSO.
+		if domain := ssoDomainFromEmail(email); domain != "" {
+			if conn, derr := s.user.Database().ResolveSSOByDomain(domain); derr == nil && conn != nil {
+				breakGlass := u != nil && s.isOrgAdminBreakGlass(c.Request.Context(), u.ID, conn.OrganisationID)
+				if !breakGlass {
+					c.Redirect(http.StatusSeeOther, "/sso/login/"+conn.ID)
+					return
+				}
+			}
+		}
+
 		if u == nil {
 			fragment = fragmentRegister
 		} else {

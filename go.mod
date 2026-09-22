@@ -3,9 +3,11 @@ module flomation.app/sentinel
 go 1.26.6
 
 require (
+	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/flomation-co/gin-owasp-headers v0.0.0-20260109111326-c70a414e6954
 	github.com/flomation-co/go-config v0.0.0-20260116170906-0989aa9f4668
 	github.com/gin-gonic/gin v1.11.0
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
