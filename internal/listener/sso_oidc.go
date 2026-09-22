@@ -142,13 +142,14 @@ func (s *Service) ssoCallback(c *gin.Context) {
 	// authentication — Sentinel is the auth authority.
 	s.syncSSOAuthorization(c.Request.Context(), userID, conn.OrganisationID, claims)
 
-	jwtToken, err := s.token.Create(userID, int64(s.config.Security.Cookie.Expiration))
-	if err != nil {
+	// A challenged session: the user has just authenticated against their own
+	// identity provider, with whatever factors that provider enforces. That is
+	// a stronger proof than a password here, not a weaker one.
+	if _, err := s.issueChallengedSession(c, userID); err != nil {
 		log.WithField("error", err).Error("unable to create JWT")
 		c.String(http.StatusInternalServerError, "Authentication failed")
 		return
 	}
-	c.SetCookie("flomation-token", *jwtToken, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 
 	redirectURL := "/"
 	if s.config.Security.LoginRedirect != nil {
