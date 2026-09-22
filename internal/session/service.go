@@ -15,6 +15,15 @@ const (
 	StateDonePassword      = 2
 	StateDoneAuthenticator = 3
 
+	// StateMFANudge holds a session between a correct password and the
+	// token being issued, while the user answers the "turn on MFA" prompt.
+	//
+	// The session deliberately does NOT complete first. The prompt is a step
+	// in the login, so an abandoned answer leaves no usable session behind,
+	// and the two handlers that finish it are the only places a token gets
+	// created from this state.
+	StateMFANudge = 4
+
 	StateSetPassword = 50
 
 	// StateMFAForReset gates the password-reset flow behind the

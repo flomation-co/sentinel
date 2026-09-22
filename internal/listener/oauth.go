@@ -404,15 +404,13 @@ func (s *Service) oauthCallback(c *gin.Context) {
 		return
 	}
 
-	// Issue JWT and set cookie.
-	jwtToken, err := s.token.Create(userID, int64(s.config.Security.Cookie.Expiration))
-	if err != nil {
+	// Issue JWT and set cookie. The provider has just signed the user in, so
+	// this is a challenged session.
+	if _, err := s.issueChallengedSession(c, userID); err != nil {
 		log.WithField("error", err).Error("unable to create JWT")
 		c.String(http.StatusInternalServerError, "Authentication failed")
 		return
 	}
-
-	c.SetCookie("flomation-token", *jwtToken, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 
 	redirectURL := "/"
 	if s.config.Security.LoginRedirect != nil {
@@ -448,7 +446,9 @@ func (s *Service) linkOrCreateSSOUser(provider string, info *oauthUserInfo, utm 
 		userID = existing.ID
 	} else {
 		// Create a new user — attribute the sign-up to the inbound campaign.
-		newUser, err := s.user.RegisterUser(info.Email, utm)
+		// There is no form of ours in an SSO sign-up, so the marketing question
+		// is not asked here; the product asks once they land.
+		newUser, err := s.user.RegisterUser(info.Email, utm, persistence.MarketingConsent{})
 		if err != nil {
 			return "", fmt.Errorf("register user: %w", err)
 		}

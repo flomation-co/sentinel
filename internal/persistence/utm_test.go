@@ -32,7 +32,7 @@ func TestRegisterUserPersistsUTMParameters(t *testing.T) {
 		Referrer: "https://blog.flomation.co/post",
 	}
 
-	u, err := db.RegisterUser(uuid.NewString(), utm)
+	u, err := db.RegisterUser(uuid.NewString(), utm, MarketingConsent{})
 	Expect(err).To(BeNil())
 	Expect(u).To(Not(BeNil()))
 
@@ -58,7 +58,7 @@ func TestRegisterUserEmptyUTMStoredAsNull(t *testing.T) {
 	db, err := NewService(&config.Config{Database: *dbCfg})
 	Expect(err).To(BeNil())
 
-	u, err := db.RegisterUser(uuid.NewString(), UTMParameters{})
+	u, err := db.RegisterUser(uuid.NewString(), UTMParameters{}, MarketingConsent{})
 	Expect(err).To(BeNil())
 
 	var nulls [6]bool
@@ -90,7 +90,7 @@ func TestCreateSSOAccountPersistsUTMParameters(t *testing.T) {
 	db, err := NewService(&config.Config{Database: *dbCfg})
 	Expect(err).To(BeNil())
 
-	u, err := db.RegisterUser(uuid.NewString(), UTMParameters{})
+	u, err := db.RegisterUser(uuid.NewString(), UTMParameters{}, MarketingConsent{})
 	Expect(err).To(BeNil())
 
 	utm := UTMParameters{

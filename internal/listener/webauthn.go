@@ -239,15 +239,12 @@ func (s *Service) webauthnLoginFinish(c *gin.Context) {
 		return
 	}
 
-	// Issue JWT.
-	jwtToken, err := s.token.Create(user.ID, int64(s.config.Security.Cookie.Expiration))
-	if err != nil {
+	// Issue JWT. A passkey is a challenge in its own right.
+	if _, err := s.issueChallengedSession(c, user.ID); err != nil {
 		log.WithField("error", err).Error("unable to create JWT after passkey auth")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "token creation failed"})
 		return
 	}
-
-	c.SetCookie("flomation-token", *jwtToken, s.config.Security.Cookie.Expiration, "/", s.config.Security.Cookie.Domain, s.config.Security.Cookie.Secure, s.config.Security.Cookie.HttpOnly)
 
 	redirectURL := "/"
 	if s.config.Security.LoginRedirect != nil {

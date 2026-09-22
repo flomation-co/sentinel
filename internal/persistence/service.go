@@ -32,6 +32,8 @@ type Service struct {
 	stmtResetFailedAttempts          *sqlx.NamedStmt
 	stmtVerifyUser                   *sqlx.NamedStmt
 	stmtUpdateDisplayName            *sqlx.NamedStmt
+	stmtGetMFANudgeState             *sqlx.NamedStmt
+	stmtRecordMFANudgeDismissed      *sqlx.NamedStmt
 
 	stmtInsertSession           *sqlx.NamedStmt
 	stmtClearSession            *sqlx.NamedStmt
@@ -48,10 +50,10 @@ type Service struct {
 	stmtInsertPasswordReset    *sqlx.NamedStmt
 	stmtGetUserByPasswordToken *sqlx.NamedStmt
 
-	stmtCreateMFADevice       *sqlx.NamedStmt
-	stmtGetMFADeviceByUserID  *sqlx.NamedStmt
-	stmtEnableMFADevice       *sqlx.NamedStmt
-	stmtDeleteMFADevice       *sqlx.NamedStmt
+	stmtCreateMFADevice      *sqlx.NamedStmt
+	stmtGetMFADeviceByUserID *sqlx.NamedStmt
+	stmtEnableMFADevice      *sqlx.NamedStmt
+	stmtDeleteMFADevice      *sqlx.NamedStmt
 
 	stmtCheckKnownDevice  *sqlx.NamedStmt
 	stmtInsertKnownDevice *sqlx.NamedStmt
@@ -190,9 +192,39 @@ func (s *Service) configure() error {
 		    created_at,
 			verification_token,
 		    locked,
-		    failed_attempt
+		    failed_attempt,
+		    marketing_opt_in,
+		    marketing_consent_at,
+		    marketing_consent_source,
+		    marketing_consent_version
 		FROM
 		    "user"
+		WHERE
+		    id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtGetMFANudgeState, err = s.db.PrepareNamed(`
+		SELECT
+		    mfa_nudge_dismissed_at,
+		    mfa_nudge_count
+		FROM
+		    "user"
+		WHERE
+		    id = :id
+	`)
+	if err != nil {
+		return err
+	}
+
+	s.stmtRecordMFANudgeDismissed, err = s.db.PrepareNamed(`
+		UPDATE
+		    "user"
+		SET
+		    mfa_nudge_dismissed_at = NOW(),
+		    mfa_nudge_count = mfa_nudge_count + 1
 		WHERE
 		    id = :id
 	`)
@@ -247,7 +279,11 @@ func (s *Service) configure() error {
 		    utm_campaign,
 		    utm_term,
 		    utm_content,
-		    utm_referrer
+		    utm_referrer,
+		    marketing_opt_in,
+		    marketing_consent_at,
+		    marketing_consent_source,
+		    marketing_consent_version
 		) VALUES (
 		    PGP_SYM_ENCRYPT(LOWER(:username), :key),
 		  	DIGEST(LOWER(:username), 'sha256'),
@@ -256,7 +292,11 @@ func (s *Service) configure() error {
 		    NULLIF(:utm_campaign, ''),
 		    NULLIF(:utm_term, ''),
 		    NULLIF(:utm_content, ''),
-		    NULLIF(:utm_referrer, '')
+		    NULLIF(:utm_referrer, ''),
+		    :marketing_opt_in,
+		    CASE WHEN :consent_asked THEN NOW() END,
+		    NULLIF(:marketing_consent_source, ''),
+		    NULLIF(:marketing_consent_version, '')
 		) RETURNING id;
 	`)
 	if err != nil {

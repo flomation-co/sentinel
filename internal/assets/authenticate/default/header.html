@@ -1,58 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 
 <head>
     <meta charset="utf-8" />
-    <title>Flomation | Automate your world</title>
+    <title>Sign in | Flomation</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta content="Flomation Limited" name="author" />
-    <meta name="msapplication-TileColor" content="#5C2482">
-    <meta name="theme-color" content="#161019">
+    <meta content="Flomation Ltd" name="author" />
+    <meta name="msapplication-TileColor" content="#460070">
+    <meta name="theme-color" content="#f6f4f8">
+    <meta name="robots" content="noindex, nofollow">
 
-    <meta content="Flomation - Automate your world" property="og:title"/>
-    <meta content="" property="og:description"/>
-    <meta name="description" content="">
-
-    <meta name="twitter:title" content="Flomation - Automate your world"/>
-    <meta name="twitter:description" content=""/>
-    <meta name="twitter:image" content=""/>
-    <meta name="twitter:card" content="summary_large_image"/>
-
-    <meta property="og:title" content="Flomation - Automate your world"/>
-    <meta property="og:description" content=""/>
+    <meta name="description" content="Sign in to Flomation.">
+    <meta property="og:title" content="Sign in | Flomation"/>
+    <meta property="og:description" content="Sign in to Flomation."/>
     <meta property="og:url" content="{{ .Domain }}"/>
-    <meta property="og:image:secure_url" content=""/>
-    <meta name="image" property="og:image" content=""/>
+    <meta property="og:image" content="https://www.flomation.co/social-card.png"/>
     <meta property="og:image:width" content="1200"/>
     <meta property="og:image:height" content="630"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="Sign in | Flomation"/>
+    <meta name="twitter:description" content="Sign in to Flomation."/>
+    <meta name="twitter:image" content="https://www.flomation.co/social-card.png"/>
 
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/images/favicon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/favicon.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon.png">
-    <link rel="mask-icon" href="assets/images/favicon.png" color="#5bbad5">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/favicon.png">
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/sora-latin.woff2" crossorigin>
+
+    <script>
+        // Before the first paint. The split layout must never appear inside an
+        // embedded frame, and a class applied after load would show as a flash
+        // of the art panel in a host page that never asked for one.
+        try {
+            if (window.self !== window.top) {
+                document.documentElement.setAttribute('data-embedded', 'true');
+            }
+        } catch (e) {
+            // A cross-origin parent can throw on access, and only a frame has
+            // one, so the throw is itself the answer.
+            document.documentElement.setAttribute('data-embedded', 'true');
+        }
+    </script>
 
     <style>
+        /* Self-hosted, and the same two files the marketing site serves, so the
+           wordmark and headings match it exactly with no third-party request on
+           the sign-in path. */
+        @font-face {
+            font-family: 'Sora';
+            font-style: normal;
+            font-weight: 400 800;
+            font-display: swap;
+            src: url("/assets/fonts/sora-latin.woff2") format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        @font-face {
+            font-family: 'Sora';
+            font-style: normal;
+            font-weight: 400 800;
+            font-display: swap;
+            src: url("/assets/fonts/sora-latin-ext.woff2") format('woff2');
+            unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+        }
+
+        /* Paper craft palette, lifted verbatim from the marketing site's
+           tokens.css so the two cannot drift apart by being hand-matched. The
+           brand purple is dark enough to be ink (12.9:1 on the page), so the
+           primary button is the literal #460070 rather than a tint of it.
+
+           The old dark-scheme names are kept as aliases at the end: the
+           fragments and the Go that renders the OAuth buttons refer to these
+           classes, and renaming them here would be a change to eleven files for
+           no visible gain. */
         :root {
-            --background-colour: #161019;
-            --primary-foreground: #460070;
-            --primary-background: #33263a;
-            --primary-background-muted: #18121c;
-            --secondary-background: #00aa9c;
-            --primary-font-colour: #fff;
-            --secondary-font-colour: #ae9fb9;
-            --secondary-action-colour: #0a0;
-            --highlight-colour: #48abe0;
-            --card-bg: rgba(19, 19, 19, 0.85);
-            --card-border: rgba(255, 255, 255, 0.06);
-            --input-bg: #17202e;
-            --input-border: rgba(255, 255, 255, 0.1);
-            --input-focus-border: var(--highlight-colour);
-            --input-focus-glow: rgba(72, 171, 224, 0.25);
-            --btn-primary-bg: var(--secondary-background);
-            --btn-primary-hover: #00c4b4;
+            --bg: #f6f4f8;
+            --surface: #fdfcfe;
+            --surface-2: #eae3ef;
+
+            /* Warm-neutral rules read cold against lilac paper, so the alpha is
+               tinted towards the purple rather than towards black. */
+            --border: rgba(70, 45, 84, 0.12);
+            --border-2: rgba(70, 45, 84, 0.18);
+
+            --text: #342a38;
+            --muted: #473d4b;
+            --soft: #524856;
+            --dim: #5c5260;
+
+            --violet: #460070;
+            --lilac: #6b3f80;
+            --teal: #2f6b64;
+            --paper-lilac: #ded1e5;
+
+            --grad-cta: linear-gradient(180deg, #5d3670, #460070);
+            --glow-cta: 0 6px 18px rgba(70, 0, 112, 0.22);
+            --glow-cta-strong: 0 10px 26px rgba(70, 0, 112, 0.34);
+
+            --lift: 0 1px 2px rgba(70, 45, 84, 0.06), 0 8px 24px -12px rgba(70, 45, 84, 0.18);
+            --lift-card: 0 1px 2px rgba(70, 45, 84, 0.05), 0 18px 48px -22px rgba(70, 45, 84, 0.34);
+
+            /* Placeholders need to read as a hint rather than a filled value,
+               but they are still text somebody has to read: --dim at 75% alpha
+               measured 3.97:1, under the 4.5 floor. This is a deliberate step
+               lighter than body copy (5.8:1 against 8.7:1) and still passes. */
+            --placeholder: #6b6270;
+
+            --danger: #a8212f;
+            --danger-wash: rgba(168, 33, 47, 0.07);
+            --danger-border: rgba(168, 33, 47, 0.18);
+
+            --font-heading: 'Sora', sans-serif;
+            /* Deliberately the same declaration the marketing site carries. The
+               Google family is actually named "Grotesk", so this falls through
+               to system-ui on both — which is what makes them match. Do not
+               correct it here alone; see the website note in CLAUDE.md. */
+            --font-body: 'Hanken Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+            --radius: 16px;
         }
 
         * {
@@ -61,34 +126,97 @@
 
         html {
             width: 100%;
-            height: 100%;
+            min-height: 100%;
             padding: 0;
             margin: 0;
         }
 
         body {
             width: 100%;
-            height: 100%;
+            min-height: 100%;
             padding: 0;
             margin: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 0.95em;
-            color: var(--primary-font-colour);
-            background: radial-gradient(at top left, var(--background-colour), var(--primary-background));
+            font-family: var(--font-body);
+            font-size: 15px;
+            color: var(--text);
+            background: var(--bg);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            overflow: hidden;
         }
 
-        /* Dot grid background — matches editor canvas */
-        body::before {
-            content: "";
-            position: fixed;
-            inset: 0;
-            background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
-            background-size: 24px 24px;
-            pointer-events: none;
-            z-index: 0;
+        /* The page, not the card, is the centring context. The card used to be
+           position:fixed and translated to the middle, which clipped the
+           taller screens (set-password carries four requirement lines) on a
+           short viewport with no way to scroll to them. */
+        .page {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 32px 20px;
+        }
+
+        /* The key art panel. Below the split there is no room for it beside the
+           card, and putting it above would mean scrolling past a picture to
+           reach the thing you came to do, so it simply goes. */
+        .showcase {
+            display: none;
+        }
+
+        .showcase-art {
+            display: block;
+            width: 100%;
+            height: auto;
+            /* The renders come back with their own studio falloff, so a bounded
+               image meets the page as a visible box however it is framed.
+               Feathering all four edges leaves no boundary to notice. Same
+               treatment, same numbers, as the marketing site's aside variant. */
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 9%, #000 91%, transparent 100%),
+                linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+            -webkit-mask-composite: source-in;
+            mask-image: linear-gradient(to bottom, transparent 0%, #000 9%, #000 91%, transparent 100%),
+                linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%);
+            mask-composite: intersect;
+        }
+
+        .showcase-line {
+            font-family: var(--font-heading);
+            font-size: 21px;
+            font-weight: 600;
+            line-height: 1.45;
+            letter-spacing: -0.015em;
+            color: var(--text);
+            margin: 4px 0 0;
+            max-width: 22ch;
+        }
+
+        .showcase-sub {
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--soft);
+            margin: 10px 0 0;
+            max-width: 34ch;
+        }
+
+        /* The split needs the card's 436px, the gutters and enough left for
+           the art to still read as a picture. 940 is where that stops being a
+           squeeze, and it takes in iPad landscape and the common laptop
+           widths; below it the card stands alone on the paper. */
+        @media (min-width: 940px) {
+            .page {
+                grid-template-columns: minmax(0, 1fr) 436px;
+                gap: clamp(48px, 6vw, 96px);
+                align-items: center;
+                justify-items: stretch;
+                max-width: 1160px;
+                margin: 0 auto;
+                padding: 48px 40px;
+            }
+
+            .showcase {
+                display: block;
+                max-width: 460px;
+                justify-self: end;
+            }
         }
 
         .authenticate_container_full {
@@ -97,33 +225,26 @@
 
         .authenticate_container_small {
             width: 100%;
-            max-width: 440px;
+            max-width: 436px;
         }
 
         .authenticate_container {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 16px;
+            border-radius: var(--radius);
             overflow: hidden;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(70, 0, 112, 0.08);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            z-index: 1;
-            animation: floatIn 0.2s ease-out;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: var(--lift-card);
+            animation: floatIn 0.22s ease-out;
         }
 
         @keyframes floatIn {
             from {
                 opacity: 0;
-                transform: translate(-50%, -48%);
+                transform: translateY(6px);
             }
             to {
                 opacity: 1;
-                transform: translate(-50%, -50%);
+                transform: translateY(0);
             }
         }
 
@@ -131,23 +252,59 @@
             box-sizing: border-box;
         }
 
+        /* The MFA settings pages build their markup in Go and head their
+           sections with an h2, so the headings need a home in the stylesheet
+           rather than a default browser size twice the body copy. */
+        h1,
+        h2,
+        h3 {
+            font-family: var(--font-heading);
+            font-weight: 600;
+            letter-spacing: -0.015em;
+            color: var(--text);
+            margin: 0 0 12px;
+        }
+
+        h1 { font-size: 21px; line-height: 1.3; }
+        h2 { font-size: 18px; line-height: 1.35; }
+        h3 { font-size: 16px; line-height: 1.4; }
+
+        strong {
+            font-weight: 600;
+            color: var(--text);
+        }
+
         .authenticate_header {
             text-align: center;
-            padding: 32px 32px 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 30px 32px 22px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .authenticate_header img {
+            height: 26px;
+            width: auto;
+            display: inline-block;
         }
 
         .authenticate_content {
-            padding: 32px;
-            color: var(--primary-font-colour);
+            padding: 30px 32px 28px;
+            color: var(--text);
             font-size: 14px;
             line-height: 1.6;
         }
 
+        /* Class only, deliberately.
+
+           An `input[type="submit"]` selector here scores higher than a bare
+           `.button-danger`, so the base `border: 0` beat the modifier's border
+           and the Disable MFA button rendered as floating red text with no
+           outline. Every submit and button input in the templates already
+           carries `.button`, so the element selectors were only ever
+           redundancy, and the redundancy was the bug. */
         .button {
             padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 10px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             border: 0;
@@ -155,41 +312,54 @@
             margin-bottom: 5px;
             box-sizing: border-box;
             display: inline-block;
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-body);
             appearance: none;
             width: 100%;
             text-align: center;
-            transition: all 0.15s ease;
+            transition: box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
             letter-spacing: 0.01em;
         }
 
         .button-continue {
-            background: var(--btn-primary-bg);
+            background: var(--grad-cta);
             color: #fff;
-            box-shadow: none;
+            box-shadow: var(--glow-cta);
         }
 
         .button-continue:hover {
-            background: var(--btn-primary-hover);
-            box-shadow: 0 4px 16px rgba(0, 170, 156, 0.3);
+            box-shadow: var(--glow-cta-strong);
             transform: translateY(-1px);
         }
 
         .button-continue:active {
             transform: translateY(0);
-            box-shadow: none;
+            box-shadow: var(--glow-cta);
         }
 
         .button-back {
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: transparent;
+            color: var(--soft);
+            border: 1px solid var(--border-2);
+            font-weight: 500;
+        }
+
+        /* Turning MFA off, and anything else that takes protection away. Framed
+           as a considered choice rather than a primary action: outlined in the
+           warning colour instead of filled with it. */
+        .button-danger {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger-border);
+        }
+
+        .button-danger:hover {
+            background: var(--danger-wash);
+            border-color: rgba(168, 33, 47, 0.34);
         }
 
         .button-back:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: rgba(255, 255, 255, 0.8);
-            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(222, 209, 229, 0.36);
+            color: var(--text);
         }
 
         input[type="email"],
@@ -197,53 +367,39 @@
         input[type="text"]:not(.input_mfa_single) {
             width: 100%;
             padding: 12px 14px;
-            background-color: var(--input-bg);
-            color: var(--primary-font-colour);
+            background-color: #fff;
+            color: var(--text);
             outline: none;
-            border: 1px solid var(--input-border);
-            border-radius: 6px;
+            border: 1px solid var(--border-2);
+            border-radius: 10px;
             box-sizing: border-box;
             margin-top: 12px;
             margin-bottom: 12px;
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
+            font-family: var(--font-body);
+            font-size: 15px;
             transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
         input[type="email"]:focus,
         input[type="password"]:focus,
-        input[type="text"]:not(.input_mfa_single):focus {
-            border-color: var(--input-focus-border);
-            box-shadow: 0 0 10px 3px var(--input-focus-glow);
+        input[type="text"]:not(.input_mfa_single):focus,
+        .input_mfa_single:focus {
+            border-color: var(--lilac);
+            box-shadow: 0 0 0 3px rgba(107, 63, 128, 0.16);
         }
 
         input[type="email"]::placeholder,
         input[type="password"]::placeholder,
         input[type="text"]::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+            color: var(--placeholder);
+            /* Firefox applies its own placeholder opacity on top of the colour,
+               which is what put this under the contrast floor in the first
+               place. */
+            opacity: 1;
         }
 
         input[type="hidden"] {
             display: none;
-        }
-
-        input[type="submit"],
-        input[type="button"] {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            border: 0;
-            margin-top: 10px;
-            margin-bottom: 5px;
-            box-sizing: border-box;
-            display: inline-block;
-            font-family: 'Inter', sans-serif;
-            appearance: none;
-            width: 100%;
-            text-align: center;
-            transition: all 0.15s ease;
         }
 
         .input_bg {
@@ -253,41 +409,40 @@
         .input_mfa {
             height: auto;
             aspect-ratio: 1;
-            border: 1px solid var(--input-border);
+            border: 1px solid var(--border-2);
             margin: 5px;
             text-align: center;
             font-size: 3em;
-            border-radius: 6px;
+            border-radius: 10px;
         }
 
         .mfa_container {
             display: flex;
             justify-content: center;
-            margin-top: 24px;
-            margin-bottom: 24px;
+            margin-top: 22px;
+            margin-bottom: 22px;
         }
 
         .input_mfa_single {
             width: 100%;
             max-width: 220px;
-            height: 52px;
+            height: 54px;
             text-align: center;
-            font-size: 2em;
-            font-family: 'Courier New', monospace;
+            font-size: 1.6em;
+            font-family: var(--font-heading);
+            font-weight: 600;
             letter-spacing: 0.4em;
-            border: 1px solid var(--input-border);
-            border-radius: 6px;
+            /* The tracking is applied to the right of each glyph, including the
+               last, so the run sits left of centre without this. */
+            text-indent: 0.4em;
+            border: 1px solid var(--border-2);
+            border-radius: 10px;
             margin: 0;
-            background-color: var(--input-bg);
-            color: var(--primary-font-colour);
+            background-color: #fff;
+            color: var(--text);
             outline: none;
             transition: border-color 0.15s ease, box-shadow 0.15s ease;
             padding: 10px;
-        }
-
-        .input_mfa_single:focus {
-            border-color: var(--input-focus-border);
-            box-shadow: 0 0 10px 3px var(--input-focus-glow);
         }
 
         .center-image {
@@ -295,31 +450,32 @@
         }
 
         .center-image img {
-            border-radius: 8px;
+            border-radius: 12px;
             margin-top: 8px;
+            border: 1px solid var(--border);
         }
 
         hr {
             margin-top: 15px;
             margin-bottom: 15px;
             border: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-top: 1px solid var(--border);
         }
 
         .error {
-            color: #ef4444;
+            color: var(--danger);
             font-weight: 600;
             font-size: 13px;
             margin-top: 8px;
             margin-bottom: 12px;
             padding: 10px 14px;
-            background: rgba(239, 68, 68, 0.08);
-            border-radius: 6px;
-            border: 1px solid rgba(239, 68, 68, 0.15);
+            background: var(--danger-wash);
+            border-radius: 8px;
+            border: 1px solid var(--danger-border);
         }
 
         .password-reset-link {
-            color: var(--secondary-font-colour);
+            color: var(--lilac);
             text-decoration: none;
             cursor: pointer;
             font-size: 13px;
@@ -327,25 +483,35 @@
         }
 
         .password-reset-link:hover {
-            color: var(--secondary-background);
+            color: var(--violet);
             text-decoration: underline;
         }
 
+        /* A way out of the screen, offered under the action it declines. It
+           needs room of its own, or at the button's 5px it reads as a caption
+           belonging to the button rather than an alternative to it. */
+        .decline-link {
+            display: block;
+            margin-top: 14px;
+            text-align: center;
+        }
+
         .subtitle {
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--soft);
             margin-bottom: 4px;
-            font-size: 14px;
+            font-size: 15px;
+            line-height: 1.55;
         }
 
         .oauth-divider {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin: 16px 0 8px;
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 12px;
+            margin: 18px 0 10px;
+            color: var(--dim);
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.08em;
         }
 
         .oauth-divider::before,
@@ -353,7 +519,7 @@
             content: "";
             flex: 1;
             height: 1px;
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--border);
         }
 
         .google-btn {
@@ -363,25 +529,23 @@
             gap: 10px;
             width: 100%;
             padding: 11px 24px;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 14px;
             font-weight: 500;
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-body);
             cursor: pointer;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgba(255, 255, 255, 0.04);
-            color: rgba(255, 255, 255, 0.85);
+            border: 1px solid var(--border-2);
+            background: #fff;
+            color: var(--text);
             text-decoration: none;
             box-sizing: border-box;
-            transition: all 0.15s ease;
-            letter-spacing: 0.01em;
+            transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
         }
 
         .google-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
+            border-color: rgba(70, 45, 84, 0.3);
+            box-shadow: var(--lift);
             transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
 
         .google-btn:active {
@@ -395,12 +559,165 @@
             flex-shrink: 0;
         }
 
-        .invalid {
-            color: rgba(255, 255, 255, 0.4);
+        /* Passkey prompt. These were inline colour literals on the fragment,
+           written for the dark scheme: a 40%-white status line is invisible on
+           paper, and the palette cannot reach an inline style to fix it. */
+        .passkey-mark {
+            text-align: center;
+            margin: 10px 0 20px;
+            color: var(--teal);
+        }
+
+        .passkey-status {
+            text-align: center;
+            font-size: 13px;
+            color: var(--dim);
+            margin-bottom: 16px;
+        }
+
+        .passkey-error {
+            text-align: center;
+            font-size: 13px;
+            color: var(--danger);
+            margin-bottom: 16px;
+        }
+
+        .passkey-alt {
+            color: var(--dim);
+            font-size: 12px;
+            text-decoration: underline;
+        }
+
+        .passkey-alt:hover {
+            color: var(--violet);
+        }
+
+        /* Where passkeys are unsupported, the password link is the only way
+           forward rather than an aside, so it stops looking like one. */
+        .passkey-alt--promoted {
+            color: var(--violet);
+            font-weight: 600;
+        }
+
+        /* A terminal screen that reports an outcome and offers nothing to do. */
+        .outcome {
+            text-align: center;
+        }
+
+        .outcome-mark {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(47, 107, 100, 0.12);
+            color: var(--teal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 24px;
+        }
+
+        .outcome-title {
+            font-family: var(--font-heading);
+            color: var(--teal);
+            font-weight: 600;
+            font-size: 16px;
+            line-height: 1.45;
+        }
+
+        .mfa_nudge_body {
+            margin-bottom: 16px;
+            color: var(--soft);
+            line-height: 1.6;
+        }
+
+        /* Marketing consent row on the registration fragment. Deliberately
+           unticked by default — consent must be an affirmative action, so no
+           pre-selection and no styling that implies the box is already set. */
+        .consent-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 18px 0 6px;
+            padding: 12px 14px;
+            background: rgba(234, 227, 239, 0.45);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.15s ease;
+        }
+
+        .consent-row:hover {
+            border-color: var(--border-2);
+        }
+
+        .consent-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            flex: 0 0 auto;
+            width: 18px;
+            height: 18px;
+            margin: 1px 0 0;
+            background-color: #fff;
+            border: 1px solid var(--border-2);
+            border-radius: 5px;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .consent-checkbox:checked {
+            background-color: var(--violet);
+            border-color: var(--violet);
+        }
+
+        .consent-checkbox:checked::after {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 1px;
+            width: 4px;
+            height: 9px;
+            border: solid #fff;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .consent-checkbox:focus-visible {
+            outline: none;
+            border-color: var(--lilac);
+            box-shadow: 0 0 0 3px rgba(107, 63, 128, 0.16);
+        }
+
+        .consent-text {
+            font-size: 13px;
+            line-height: 1.45;
+            color: var(--text);
+        }
+
+        .consent-subtext {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: var(--soft);
+        }
+
+        .invalid,
+        .valid {
             font-size: 13px;
             margin: 4px 0;
             padding-left: 24px;
             position: relative;
+        }
+
+        .invalid {
+            color: var(--dim);
+        }
+
+        .valid {
+            color: var(--muted);
         }
 
         .invalid:before {
@@ -409,16 +726,8 @@
             display: inline-block;
             position: absolute;
             left: 0;
-            color: rgba(239, 68, 68, 0.7);
+            color: rgba(168, 33, 47, 0.55);
             font-size: 12px;
-        }
-
-        .valid {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 13px;
-            margin: 4px 0;
-            padding-left: 24px;
-            position: relative;
         }
 
         .valid:before {
@@ -427,34 +736,20 @@
             display: inline-block;
             position: absolute;
             left: 0;
-            color: #22c55e;
+            color: var(--teal);
             font-size: 12px;
         }
 
         .strong {
-            font-weight: 700;
-            color: var(--secondary-background);
-        }
-
-        @media only screen and (max-width: 576px) {
-            .authenticate_container_small {
-                width: calc(100% - 32px);
-                max-width: none;
-            }
-
-            .authenticate_content {
-                padding: 24px;
-            }
-
-            .authenticate_header {
-                padding: 24px 24px 20px;
-            }
+            font-weight: 600;
+            color: var(--violet);
         }
 
         .footer-links {
             padding: 14px 32px;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-top: 1px solid var(--border);
             text-align: center;
+            background: rgba(234, 227, 239, 0.4);
         }
 
         ul {
@@ -471,15 +766,15 @@
         }
 
         li > a {
-            color: rgba(255, 255, 255, 0.3);
+            color: var(--dim);
             display: inline-block;
             text-decoration: none;
-            font-size: 11px;
+            font-size: 12px;
             transition: color 0.15s ease;
         }
 
         li > a:hover {
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--violet);
         }
 
         .pc50 {
@@ -489,19 +784,21 @@
         }
 
         .continue_creating_title {
+            font-family: var(--font-heading);
             font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 12px;
+            font-size: 17px;
+            letter-spacing: -0.01em;
+            margin-bottom: 10px;
         }
 
         .continue_creating {
             margin-bottom: 16px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--soft);
             line-height: 1.6;
         }
 
         p {
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--soft);
             line-height: 1.6;
         }
 
@@ -534,18 +831,18 @@
             margin: 0;
             width: auto;
             cursor: pointer;
-            color: rgba(255, 255, 255, 0.45);
+            color: var(--dim);
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 4px;
+            border-radius: 6px;
             transition: color 0.15s ease, background-color 0.15s ease;
         }
 
         .password-toggle:hover,
         .password-toggle:focus-visible {
-            color: rgba(255, 255, 255, 0.9);
-            background-color: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            background-color: rgba(222, 209, 229, 0.5);
             outline: none;
         }
 
@@ -562,6 +859,54 @@
         .password-toggle .eye-off { display: none; }
         .password-toggle[aria-pressed="true"] .eye { display: none; }
         .password-toggle[aria-pressed="true"] .eye-off { display: block; }
+
+        /* Embedded in somebody else's page: no art, no paper, no padding. The
+           host supplies the ground, and the footer script makes the background
+           transparent to let it through. */
+        [data-embedded] .page {
+            display: block;
+            min-height: 0;
+            padding: 0;
+            max-width: none;
+        }
+
+        [data-embedded] .showcase {
+            display: none;
+        }
+
+        [data-embedded] .authenticate_container {
+            box-shadow: none;
+            animation: none;
+        }
+
+        @media only screen and (max-width: 576px) {
+            .page {
+                padding: 20px 14px;
+            }
+
+            .authenticate_container_small {
+                max-width: none;
+            }
+
+            .authenticate_content {
+                padding: 24px;
+            }
+
+            .authenticate_header {
+                padding: 24px 24px 20px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .authenticate_container {
+                animation: none;
+            }
+
+            .button:hover,
+            .google-btn:hover {
+                transform: none;
+            }
+        }
     </style>
     <script>
         // togglePasswordVisibility flips the type of the .password-input
@@ -580,13 +925,20 @@
 </head>
 
 <body>
-    <div class="authenticate_container authenticate_container_small" id="authenticate_container">
-        <div class="authenticate_header">
-            <a href="/authenticate" title="Log In or Sign Up for Flomation" data-lang="sign_up_message">
-                <img width="180" height="auto" src="assets/images/flomation-logo.png" alt="Flomation | Automate your world">
-            </a>
-        </div>
-        <div class="authenticate_content" id="authenticate_content">
-        <form method="post" action="" name="form" id="form">
-            <input type="hidden" id="iframe" maxlength="255" name="iframe" />
-            <input type="hidden" id="session" maxlength="255" name="session" value="$$SESSION_ID$$" />
+    <div class="page">
+        <aside class="showcase">
+            <img class="showcase-art" src="/assets/images/key-art-security.jpg" alt="" width="1400" height="1045" decoding="async">
+            <p class="showcase-line">One sign-in for every flow, agent and integration you run.</p>
+            <p class="showcase-sub">Passkeys, authenticator codes and single sign-on, on one account.</p>
+        </aside>
+
+        <div class="authenticate_container authenticate_container_small" id="authenticate_container">
+            <div class="authenticate_header">
+                <a href="/authenticate" title="Log In or Sign Up for Flomation" data-lang="sign_up_message">
+                    <img width="900" height="252" src="/assets/images/flomation-wordmark-ink.png" alt="Flomation">
+                </a>
+            </div>
+            <div class="authenticate_content" id="authenticate_content">
+            <form method="post" action="" name="form" id="form">
+                <input type="hidden" id="iframe" maxlength="255" name="iframe" />
+                <input type="hidden" id="session" maxlength="255" name="session" value="$$SESSION_ID$$" />

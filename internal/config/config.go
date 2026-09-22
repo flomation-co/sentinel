@@ -19,10 +19,27 @@ type DatabaseConfig struct {
 }
 
 type CookieConfig struct {
-	Domain     string `json:"domain" env:"COOKIE_DOMAIN" arg:"cookie-domain"`
-	Secure     bool   `json:"secure"`
-	HttpOnly   bool   `json:"http_only"`
-	Expiration int    `json:"expiration"`
+	Domain   string `json:"domain" env:"COOKIE_DOMAIN" arg:"cookie-domain"`
+	Secure   bool   `json:"secure"`
+	HttpOnly bool   `json:"http_only"`
+
+	// Expiration is the lifetime, in seconds, of a session that has not been
+	// challenged. Registration is the case: the only thing the user has given
+	// is an email address nobody has yet proved they own.
+	Expiration int `json:"expiration"`
+
+	// ChallengedExpiration is the lifetime, in seconds, of a session where the
+	// user presented something -- a password, a TOTP code, a passkey, or an
+	// identity provider's own sign-in. Longer, because there is something
+	// behind it and because being asked to log in daily is what drives people
+	// towards weaker passwords and away from MFA.
+	//
+	// Zero falls back to Expiration. Note this is NOT what an older config
+	// gets: an absent key leaves the default below in place, so an existing
+	// install picks up the longer lifetime on upgrade without being edited.
+	// The fallback is for an operator who sets it to zero deliberately, and
+	// for a zero-value Config.
+	ChallengedExpiration int `json:"challenged_expiration"`
 }
 
 type SecurityConfig struct {
@@ -130,9 +147,10 @@ func LoadConfig(path string) (*Config, error) {
 	config := Config{
 		Security: SecurityConfig{
 			Cookie: CookieConfig{
-				Domain:     "localhost",
-				Secure:     true,
-				Expiration: 86400,
+				Domain:               "localhost",
+				Secure:               true,
+				Expiration:           86400,
+				ChallengedExpiration: 604800,
 			},
 			Realm:          "localhost",
 			LoginRedirect:  goconfig.String("http://localhost/"),
